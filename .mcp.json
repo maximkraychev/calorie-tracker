@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "angular-cli": {
+      "command": "cmd",
+      "args": ["/c", "cd /d frontend && npx -y @angular/cli mcp"]
+    }
+  }
+}
