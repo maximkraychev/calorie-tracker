@@ -2,6 +2,8 @@
 
 Angular v22, standalone components, signals-first, zoneless. This document is the
 scaffolding blueprint: folder layout, naming, and the patterns every feature follows.
+For the repo-wide picture and the API contract, see [../ARCHITECTURE.md](../ARCHITECTURE.md);
+the backend counterpart is [../backend/ARCHITECTURE.md](../backend/ARCHITECTURE.md).
 
 ## 1. High-level structure
 
