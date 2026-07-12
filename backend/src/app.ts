@@ -1,3 +1,4 @@
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -12,8 +13,12 @@ export function createApp() {
   const app = express();
 
   app.use(helmet());
-  app.use(cors());
+  // credentials: true lets the browser send the httpOnly refresh cookie
+  // cross-origin (Angular dev server). origin: true reflects the caller's
+  // origin — lock this to the real frontend origin in production.
+  app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());
+  app.use(cookieParser());
   app.use(pinoHttp({ logger }));
 
   app.use('/api', apiRouter);

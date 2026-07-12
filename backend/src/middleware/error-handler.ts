@@ -11,6 +11,12 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     return;
   }
 
+  // express.json() throws a SyntaxError with status 400 on unparseable bodies.
+  if (err instanceof SyntaxError && 'status' in err && err.status === 400) {
+    res.status(400).json({ error: 'Invalid JSON body' });
+    return;
+  }
+
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ error: err.message });
     return;
