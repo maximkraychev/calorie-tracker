@@ -4,6 +4,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 
+import { env } from './config/env.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { notFound } from './middleware/not-found.js';
 import { apiRouter } from './routes/index.js';
@@ -14,9 +15,9 @@ export function createApp() {
 
   app.use(helmet());
   // credentials: true lets the browser send the httpOnly refresh cookie
-  // cross-origin (Angular dev server). origin: true reflects the caller's
-  // origin — lock this to the real frontend origin in production.
-  app.use(cors({ origin: true, credentials: true }));
+  // cross-origin. CORS_ORIGIN locks this to the deployed frontend; when unset
+  // (dev), origin: true reflects the caller (Angular dev server).
+  app.use(cors({ origin: env.CORS_ORIGIN ?? true, credentials: true }));
   app.use(express.json());
   app.use(cookieParser());
   app.use(pinoHttp({ logger }));

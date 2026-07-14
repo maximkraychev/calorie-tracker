@@ -8,10 +8,14 @@ import * as authService from './auth.service.js';
 const REFRESH_COOKIE = 'refreshToken';
 
 // Path-scoped to /api/auth so the cookie is only sent to auth endpoints (§5).
+// In production the frontend and API live on different domains, so the cookie
+// is cross-site: it must be sameSite: 'none' (and therefore secure) or the
+// browser drops it. Dev is same-origin via the proxy, so 'lax' works there.
+const isProduction = env.NODE_ENV === 'production';
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
   path: '/api/auth',
 } as const;
 
