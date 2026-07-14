@@ -1,12 +1,12 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
+// Root component: the app is a mobile-sized single column. Everything else
+// (shell, tabs, sheets) is rendered through the router.
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.scss'
+  template: `<router-outlet />`,
+  styleUrl: './app.scss',
 })
-export class App {
-  protected readonly title = signal('frontend');
-}
+export class App {}
