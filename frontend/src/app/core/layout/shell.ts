@@ -94,6 +94,10 @@ import { AccountSheet } from './account-sheet.store';
       margin: 0 auto;
       overflow: hidden;
       background: var(--color-bg);
+      /* Keep content clear of the iPhone status bar / notch in standalone mode. */
+      padding-top: env(safe-area-inset-top);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
     .content { flex: 1; overflow-y: auto; }
     .tabbar {
@@ -101,6 +105,8 @@ import { AccountSheet } from './account-sheet.store';
       display: flex;
       border-top: 2px solid var(--color-divider);
       background: var(--color-bg);
+      /* Extend the bar into the home-indicator area so tabs aren't overlapped. */
+      padding-bottom: env(safe-area-inset-bottom);
     }
     .tab {
       position: relative;

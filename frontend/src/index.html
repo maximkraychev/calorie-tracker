@@ -4,8 +4,21 @@
   <meta charset="utf-8">
   <title>Calorie Tracker</title>
   <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- viewport-fit=cover lets content extend under the iPhone notch/home indicator;
+       the app then pads back using env(safe-area-inset-*) in CSS. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!-- PWA: web app manifest + theme colour (browser UI / Android task switcher). -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#12b76a">
+
+  <!-- iOS standalone support (Safari ignores most of the manifest). -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Calorie Tracker">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
   <app-root></app-root>

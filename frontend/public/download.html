@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Get Calorie Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#12b76a" />
+
+  <!-- Link the manifest + SW here too, so Chrome considers THIS page a valid
+       install entry point and fires `beforeinstallprompt`. -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
+  <style>
+    /* Tokens mirrored from the app's styles.scss (emerald / light). */
+    :root {
+      --bg: #f4f6f5;
+      --surface: #ffffff;
+      --text: #171a1f;
+      --muted: #6b7686;
+      --accent: #12b76a;
+      --accent-600: #0ea25c;
+      --accent-700: #0b7d47;
+      --accent-100: #e2f6ec;
+      --divider: #e4e8ee;
+      --radius-md: 16px;
+      --radius-lg: 22px;
+      --shadow-md: 0 6px 16px rgba(16, 24, 40, 0.09);
+      --shadow-lg: 0 16px 40px rgba(16, 24, 40, 0.13);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Archivo', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      line-height: 1.55;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    }
+    .wrap { width: 100%; max-width: 440px; }
+
+    /* Language toggle */
+    .langbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .lang {
+      display: inline-flex; border: 1px solid var(--divider);
+      border-radius: 999px; overflow: hidden; background: var(--surface);
+    }
+    .lang button {
+      border: 0; background: transparent; cursor: pointer;
+      font: 700 12px/1 'Archivo', system-ui, sans-serif; letter-spacing: 0.04em;
+      padding: 7px 12px; color: var(--muted);
+    }
+    body[data-lang="en"] .lang [data-set="en"],
+    body[data-lang="bg"] .lang [data-set="bg"] { background: var(--accent); color: #fff; }
+
+    /* Card */
+    .card {
+      background: var(--surface); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md); padding: 28px 22px; text-align: center;
+      border-top: 3px solid var(--accent);
+    }
+    .app-icon {
+      width: 96px; height: 96px; border-radius: 22px; display: block; margin: 0 auto 16px;
+      box-shadow: var(--shadow-lg);
+    }
+    h1 { font-size: 28px; letter-spacing: -0.02em; margin: 0 0 6px; }
+    .tagline { color: var(--muted); margin: 0 0 22px; }
+
+    /* Install status banner (shown when already installed) */
+    .installed {
+      display: none; align-items: center; gap: 10px; justify-content: center;
+      background: var(--accent-100); color: var(--accent-700);
+      border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 18px;
+      font-weight: 600; font-size: 14px;
+    }
+    body[data-standalone="true"] .installed { display: flex; }
+    body[data-standalone="true"] .platforms { display: none; }
+
+    /* Buttons */
+    .btn {
+      width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      cursor: pointer; text-decoration: none;
+      font: 800 15px/1.2 'Archivo', system-ui, sans-serif;
+      padding: 15px 18px; border-radius: var(--radius-md); border: 1px solid transparent;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .btn svg { width: 22px; height: 22px; flex: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-600); }
+    .btn-outline { background: var(--surface); color: var(--text); border-color: var(--divider); }
+    .btn-outline:hover { border-color: #aab3c0; }
+    .platform { margin-bottom: 14px; }
+    .hint { font-size: 12px; color: var(--muted); margin: 8px 2px 0; }
+
+    /* Instruction panels */
+    .steps {
+      display: none; text-align: left; margin-top: 12px;
+      background: var(--bg); border: 1px solid var(--divider);
+      border-radius: var(--radius-md); padding: 14px 16px 16px;
+    }
+    .steps.open { display: block; }
+    .steps h3 { font-size: 14px; margin: 0 0 10px; }
+    .steps ol { margin: 0; padding-left: 20px; }
+    .steps li { margin: 0 0 9px; font-size: 14px; }
+    .steps li:last-child { margin-bottom: 0; }
+    .inline-ico { width: 17px; height: 17px; vertical-align: -3px; margin: 0 1px; }
+    .note {
+      margin-top: 12px; font-size: 12px; color: var(--muted);
+      background: #fff; border-radius: 10px; padding: 9px 11px; border: 1px solid var(--divider);
+    }
+
+    .footer { text-align: center; margin-top: 20px; }
+    .footer a { color: var(--accent-700); font-size: 13px; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* Language visibility */
+    body[data-lang="en"] [data-lang-txt="bg"],
+    body[data-lang="bg"] [data-lang-txt="en"] { display: none; }
+  </style>
+</head>
+<body data-lang="en">
+  <div class="wrap">
+    <div class="langbar">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-set="en" onclick="setLang('en')">EN</button>
+        <button type="button" data-set="bg" onclick="setLang('bg')">БГ</button>
+      </div>
+    </div>
+
+    <main class="card">
+      <img class="app-icon" src="icons/icon-512.png" alt="Calorie Tracker" width="96" height="96" />
+      <h1>Calorie Tracker</h1>
+      <p class="tagline">
+        <span data-lang-txt="en">Track your daily calories and macros — right from your home screen.</span>
+        <span data-lang-txt="bg">Следи калориите и макросите си — директно от началния екран.</span>
+      </p>
+
+      <div class="installed">
+        <span data-lang-txt="en">App is installed.</span>
+        <span data-lang-txt="bg">Приложението е инсталирано.</span>
+        <a href="/" style="color: inherit; text-decoration: underline;">
+          <span data-lang-txt="en">Open it</span><span data-lang-txt="bg">Отвори</span>
+        </a>
+      </div>
+
+      <div class="platforms">
+        <!-- ANDROID -->
+        <div class="platform">
+          <button type="button" class="btn btn-primary" onclick="onAndroid()">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.6 9.48l1.84-3.18a.42.42 0 00-.15-.57.42.42 0 00-.57.15l-1.86 3.22a11.4 11.4 0 00-8.72 0L6.28 5.88a.42.42 0 00-.57-.15.42.42 0 00-.15.57L7.4 9.48A10.7 10.7 0 002 18h20a10.7 10.7 0 00-5.4-8.52zM7 15.25a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5zm10 0a1.25 1.25 0 110-2.5 1.25 1.25 0 010 2.5z"/></svg>
+            <span data-lang-txt="en">Install on Android</span>
+            <span data-lang-txt="bg">Инсталирай на Android</span>
+          </button>
+          <p class="hint">
+            <span data-lang-txt="en">Chrome or Edge. Tap to install — no app store needed.</span>
+            <span data-lang-txt="bg">Chrome или Edge. Натисни за инсталиране — без магазин за приложения.</span>
+          </p>
+
+          <div class="steps" id="android-steps">
+            <h3>
+              <span data-lang-txt="en">If nothing pops up, add it manually:</span>
+              <span data-lang-txt="bg">Ако не се появи прозорец, добави ръчно:</span>
+            </h3>
+            <ol>
+              <li>
+                <span data-lang-txt="en">Open the browser menu ( <strong>⋮</strong> , top-right).</span>
+                <span data-lang-txt="bg">Отвори менюто на браузъра ( <strong>⋮</strong> , горе вдясно).</span>
+              </li>
+              <li>
+                <span data-lang-txt="en">Tap <strong>Install app</strong> (or <strong>Add to Home screen</strong>).</span>
+                <span data-lang-txt="bg">Натисни <strong>Инсталирай приложението</strong> (или <strong>Добави към началния екран</strong>).</span>
+              </li>
+              <li>
+                <span data-lang-txt="en">Confirm with <strong>Install</strong>.</span>
+                <span data-lang-txt="bg">Потвърди с <strong>Инсталирай</strong>.</span>
+              </li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- IOS -->
+        <div class="platform">
+          <button type="button" class="btn btn-outline" onclick="toggleIos()">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.36 12.9c-.02-2.13 1.74-3.15 1.82-3.2-.99-1.45-2.54-1.65-3.09-1.67-1.31-.13-2.57.77-3.24.77-.67 0-1.7-.75-2.8-.73-1.44.02-2.77.84-3.51 2.13-1.5 2.6-.38 6.45 1.07 8.56.71 1.03 1.55 2.19 2.66 2.15 1.07-.04 1.47-.69 2.76-.69 1.29 0 1.65.69 2.78.67 1.15-.02 1.87-1.05 2.57-2.09.81-1.2 1.14-2.36 1.16-2.42-.03-.01-2.23-.86-2.25-3.4zM14.2 6.4c.59-.72.99-1.71.88-2.7-.85.03-1.88.57-2.49 1.28-.55.63-1.03 1.64-.9 2.61.95.07 1.92-.48 2.51-1.19z"/></svg>
+            <span data-lang-txt="en">Install on iPhone / iPad</span>
+            <span data-lang-txt="bg">Инсталирай на iPhone / iPad</span>
+          </button>
+          <p class="hint">
+            <span data-lang-txt="en">Apple has no one-tap install — tap for the 3 quick steps.</span>
+            <span data-lang-txt="bg">Apple няма инсталиране с едно натискане — виж 3-те лесни стъпки.</span>
+          </p>
+
+          <div class="steps" id="ios-steps">
+            <h3>
+              <span data-lang-txt="en">Add to Home Screen (in Safari):</span>
+              <span data-lang-txt="bg">Добави към началния екран (в Safari):</span>
+            </h3>
+            <ol>
+              <li>
+                <span data-lang-txt="en">Tap the
+                  <svg class="inline-ico" viewBox="0 0 24 24" fill="none" stroke="#0b7d47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg>
+                  <strong>Share</strong> button in Safari's toolbar.</span>
+                <span data-lang-txt="bg">Натисни бутона
+                  <svg class="inline-ico" viewBox="0 0 24 24" fill="none" stroke="#0b7d47" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg>
+                  <strong>Споделяне</strong> в лентата на Safari.</span>
+              </li>
+              <li>
+                <span data-lang-txt="en">Scroll down and tap <strong>Add to Home Screen</strong>.</span>
+                <span data-lang-txt="bg">Превърти надолу и натисни <strong>Към началния екран</strong>.</span>
+              </li>
+              <li>
+                <span data-lang-txt="en">Tap <strong>Add</strong> — the icon appears on your home screen.</span>
+                <span data-lang-txt="bg">Натисни <strong>Добави</strong> — иконата се появява на началния екран.</span>
+              </li>
+            </ol>
+            <p class="note">
+              <span data-lang-txt="en">⚠️ Must be opened in <strong>Safari</strong>. Chrome/Firefox on iPhone can't add to the home screen.</span>
+              <span data-lang-txt="bg">⚠️ Трябва да е отворено в <strong>Safari</strong>. Chrome/Firefox на iPhone не могат да добавят към началния екран.</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div class="footer">
+      <a href="/">
+        <span data-lang-txt="en">Skip — open in browser</span>
+        <span data-lang-txt="bg">Пропусни — отвори в браузъра</span>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // --- Language ---
+    function setLang(lang) {
+      document.body.dataset.lang = lang;
+      document.documentElement.lang = lang;
+      try { localStorage.setItem('ct-lang', lang); } catch (e) {}
+    }
+    (function initLang() {
+      let saved;
+      try { saved = localStorage.getItem('ct-lang'); } catch (e) {}
+      const nav = (navigator.language || 'en').toLowerCase();
+      setLang(saved || (nav.startsWith('bg') ? 'bg' : 'en'));
+    })();
+
+    // --- Already installed? (running as a PWA) ---
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (standalone) document.body.dataset.standalone = 'true';
+
+    // --- Android: capture the install prompt ---
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+    });
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt = null;
+      document.body.dataset.standalone = 'true';
+    });
+
+    async function onAndroid() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        // If the user dismissed it, fall back to the manual steps.
+        if (!choice || choice.outcome !== 'accepted') openSteps('android-steps');
+      } else {
+        // Prompt not available: already installed, unsupported browser, or criteria
+        // not met yet — show the manual path so the user is never stuck.
+        openSteps('android-steps');
+      }
+    }
+
+    function toggleIos() {
+      const el = document.getElementById('ios-steps');
+      el.classList.toggle('open');
+      if (el.classList.contains('open')) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    function openSteps(id) {
+      const el = document.getElementById(id);
+      el.classList.add('open');
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Auto-open the steps for the visitor's own platform (buttons stay for everyone).
+    const ua = navigator.userAgent;
+    const isIOS = /iphone|ipad|ipod/i.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS && !standalone) document.getElementById('ios-steps').classList.add('open');
+
+    // Register the service worker so this page is a valid install entry point.
+    // ngsw-worker.js only exists in production builds; failures are harmless.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('ngsw-worker.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

@@ -25,7 +25,9 @@ import { I18n } from '../../../core/i18n/i18n';
       max-width: 480px;
       min-height: 100dvh;
       margin: 0 auto;
-      padding: var(--space-8) var(--space-6);
+      /* Base padding, but never less than the device safe-area insets (notch/home bar). */
+      padding: max(var(--space-8), env(safe-area-inset-top)) max(var(--space-6), env(safe-area-inset-right))
+        max(var(--space-8), env(safe-area-inset-bottom)) max(var(--space-6), env(safe-area-inset-left));
     }
     .brand {
       font-family: var(--font-heading);

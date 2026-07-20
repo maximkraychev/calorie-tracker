@@ -14,6 +14,11 @@ export const en = {
   'account.language': 'Language',
   'common.comingSoon': 'Coming soon.',
 
+  // PWA update prompt (forced — old version is blocked until reload)
+  'update.title': 'Update available',
+  'update.message': 'A new version is ready. Reload to keep using the app.',
+  'update.action': 'Update now',
+
   // Meals
   'meal.breakfast': 'Breakfast',
   'meal.lunch': 'Lunch',
@@ -116,6 +121,11 @@ export const bg: Record<TranslationKey, string> = {
   'account.signOut': 'Изход',
   'account.language': 'Език',
   'common.comingSoon': 'Очаквайте скоро.',
+
+  // PWA update prompt (forced — old version is blocked until reload)
+  'update.title': 'Налична е нова версия',
+  'update.message': 'Готова е нова версия. Презареди, за да продължиш да ползваш приложението.',
+  'update.action': 'Обнови сега',
 
   // Meals
   'meal.breakfast': 'Закуска',
