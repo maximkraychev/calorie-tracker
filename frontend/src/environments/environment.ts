@@ -1,6 +1,7 @@
 // Production values — this is what `ng build` ships by default.
-// When deploying, replace the domain below with the real backend URL;
-// that is the ONLY frontend change needed for a deploy.
+// Relative /api: the deployed frontend (Render Static Site) proxies /api/* to
+// the backend via a rewrite rule, so the browser sees one origin. This keeps
+// the auth cookie first-party (works on Safari/iOS) and avoids CORS entirely.
 export const environment = {
-  apiBaseUrl: 'https://calorie-tracker-backend-qjml.onrender.com/api',
+  apiBaseUrl: '/api',
 };
