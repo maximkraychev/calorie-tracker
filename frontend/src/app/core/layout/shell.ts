@@ -5,48 +5,42 @@ import { AuthStore } from '../auth/auth.store';
 import { I18n } from '../i18n/i18n';
 import type { Language } from '../i18n/translations';
 import { Icon } from '../../shared/ui/icon';
+import { GoalsSheet } from './goals-sheet';
+import { AccountSheet } from './account-sheet.store';
 
-// Authenticated app frame: fixed top bar + scrolling feature content + bottom tabs,
-// laid out as a phone-sized column. The account sheet (with the language toggle and
-// sign-out) slides up over a scrim.
+// Authenticated app frame: scrolling feature content + bottom tabs, laid out as a phone-sized
+// column (the account trigger lives on the diary's day-switcher row, not a top bar). The
+// account sheet (with the language toggle, daily-goals entry point, and sign-out) slides up
+// over a scrim; the goals sheet stacks above it.
 @Component({
   selector: 'ct-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, Icon, GoalsSheet],
   template: `
     <div class="shell">
-      <header class="topbar">
-        <div class="brand">{{ i18n.t('app.name') }}</div>
-        <button
-          class="btn btn-icon"
-          type="button"
-          [attr.aria-label]="i18n.t('account.title')"
-          (click)="accountOpen.set(true)"
-        >
-          <ct-icon name="user" />
-        </button>
-      </header>
-
       <main class="content">
         <router-outlet />
       </main>
 
       <nav class="tabbar" [attr.aria-label]="i18n.t('app.name')">
         <a routerLink="/diary" routerLinkActive="active" class="tab">
+          <span class="indicator"></span>
           <ct-icon name="utensils" />
           <span>{{ i18n.t('nav.diary') }}</span>
         </a>
         <a routerLink="/foods" routerLinkActive="active" class="tab">
+          <span class="indicator"></span>
           <ct-icon name="apple" />
           <span>{{ i18n.t('nav.myFoods') }}</span>
         </a>
         <a routerLink="/recipes" routerLinkActive="active" class="tab">
+          <span class="indicator"></span>
           <ct-icon name="book" />
           <span>{{ i18n.t('nav.recipes') }}</span>
         </a>
       </nav>
 
-      @if (accountOpen()) {
-        <div class="scrim" (click)="accountOpen.set(false)">
+      @if (accountSheet.open()) {
+        <div class="scrim" (click)="accountSheet.close()">
           <div class="sheet" (click)="$event.stopPropagation()">
             <div class="account-head">
               <div class="avatar"><ct-icon name="user" /></div>
@@ -71,7 +65,11 @@ import { Icon } from '../../shared/ui/icon';
               }
             </div>
 
-            <button class="btn btn-secondary sheet-btn" type="button" (click)="accountOpen.set(false)">
+            <button class="btn btn-secondary sheet-btn goals-btn" type="button" (click)="openGoals()">
+              <ct-icon name="target" />
+              {{ i18n.t('goals.title') }}
+            </button>
+            <button class="btn btn-secondary sheet-btn" type="button" (click)="accountSheet.close()">
               {{ i18n.t('account.close') }}
             </button>
             <button class="btn btn-primary sheet-btn" type="button" (click)="signOut()">
@@ -79,6 +77,10 @@ import { Icon } from '../../shared/ui/icon';
             </button>
           </div>
         </div>
+      }
+
+      @if (goalsOpen()) {
+        <ct-goals-sheet (close)="goalsOpen.set(false)" />
       }
     </div>
   `,
@@ -93,24 +95,6 @@ import { Icon } from '../../shared/ui/icon';
       overflow: hidden;
       background: var(--color-bg);
     }
-    .topbar {
-      flex: none;
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-      height: 52px;
-      padding: 0 var(--space-4);
-      border-bottom: 2px solid var(--color-divider);
-    }
-    .topbar .btn-icon { border: 1px solid var(--color-divider); }
-    .brand {
-      margin-right: auto;
-      font-family: var(--font-heading);
-      font-weight: 800;
-      font-size: 17px;
-      letter-spacing: -0.02em;
-      text-transform: uppercase;
-    }
     .content { flex: 1; overflow-y: auto; }
     .tabbar {
       flex: none;
@@ -119,20 +103,39 @@ import { Icon } from '../../shared/ui/icon';
       background: var(--color-bg);
     }
     .tab {
+      position: relative;
+      overflow: hidden;
       flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 3px;
-      padding: 10px 0 12px;
+      gap: 4px;
+      padding: 13px 0 15px;
       text-decoration: none;
       font-family: var(--font-heading);
       font-weight: 800;
       font-size: 11px;
       letter-spacing: 0.04em;
-      color: color-mix(in srgb, var(--color-text) 55%, transparent);
+      background: transparent;
+      color: color-mix(in srgb, var(--color-text) 50%, transparent);
+      transition: background 0.15s ease, color 0.15s ease;
     }
-    .tab.active { color: var(--color-accent); }
+    .tab .indicator {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--color-accent);
+      transform: scaleX(0);
+      transform-origin: center;
+      transition: transform 0.2s ease;
+    }
+    .tab.active {
+      background: var(--color-accent-100);
+      color: var(--color-accent);
+    }
+    .tab.active .indicator { transform: scaleX(1); }
 
     .scrim {
       position: absolute;
@@ -147,6 +150,7 @@ import { Icon } from '../../shared/ui/icon';
       background: var(--color-surface);
       padding: var(--space-4);
       border-top: 2px solid var(--color-accent);
+      border-radius: 22px 22px 0 0;
       animation: ct-sheet 0.22s ease;
     }
     .account-head {
@@ -189,20 +193,27 @@ import { Icon } from '../../shared/ui/icon';
     .lang-option.active { background: var(--color-accent); color: var(--color-bg); }
     .sheet-btn { width: 100%; justify-content: center; }
     .sheet-btn + .sheet-btn { margin-top: var(--space-2); }
+    .goals-btn { justify-content: flex-start; }
   `,
 })
 export class Shell {
   protected readonly i18n = inject(I18n);
   protected readonly auth = inject(AuthStore);
+  protected readonly accountSheet = inject(AccountSheet);
 
-  protected readonly accountOpen = signal(false);
+  protected readonly goalsOpen = signal(false);
+
+  protected openGoals(): void {
+    this.accountSheet.close();
+    this.goalsOpen.set(true);
+  }
 
   protected setLanguage(lang: Language): void {
     this.i18n.setLanguage(lang);
   }
 
   protected signOut(): void {
-    this.accountOpen.set(false);
+    this.accountSheet.close();
     void this.auth.logout();
   }
 }

@@ -1,38 +1,38 @@
 /* Global styles — Modernist design system.
    Ported from the design bundle's `modernist-tokens.css` (the source of truth for
    the look): CSS custom-property tokens + the component classes the templates use
-   (.btn, .input, .field, .tag, .card). Flat, near-monochrome, zero border-radius. */
+   (.btn, .input, .field, .tag, .card). Emerald accent on a light, softly rounded surface. */
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap');
 
 :root {
-  --color-bg: #f3f2f2;
-  --color-surface: #eae9e9;
-  --color-text: #201e1d;
-  --color-accent: #ec3013;
-  --color-accent-2: #e15b47;
-  --color-divider: color-mix(in srgb, #201e1d 40%, transparent);
+  --color-bg: #f4f6f5;
+  --color-surface: #ffffff;
+  --color-text: #171a1f;
+  --color-accent: #12b76a;
+  --color-accent-2: #3ecf8e;
+  --color-divider: #e4e8ee;
 
-  /* Neutral ramp */
-  --color-neutral-100: #f8f4f4;
-  --color-neutral-200: #eae7e7;
-  --color-neutral-300: #d7d3d3;
-  --color-neutral-400: #bab6b6;
-  --color-neutral-500: #9b9797;
-  --color-neutral-600: #7d7979;
-  --color-neutral-700: #605d5d;
-  --color-neutral-800: #444141;
-  --color-neutral-900: #2d2b2b;
+  /* Neutral ramp — cool greys */
+  --color-neutral-100: #eef1f4;
+  --color-neutral-200: #e2e7ed;
+  --color-neutral-300: #cdd4dd;
+  --color-neutral-400: #aab3c0;
+  --color-neutral-500: #8a94a3;
+  --color-neutral-600: #6b7686;
+  --color-neutral-700: #4d5765;
+  --color-neutral-800: #333b47;
+  --color-neutral-900: #14181f;
 
-  /* Accent ramp */
-  --color-accent-100: #fff2ef;
-  --color-accent-200: #ffe0d9;
-  --color-accent-300: #ffc4b8;
-  --color-accent-400: #ff9783;
-  --color-accent-500: #ff563c;
-  --color-accent-600: #dd2b0f;
-  --color-accent-700: #ae1800;
-  --color-accent-800: #7c1405;
-  --color-accent-900: #4d170e;
+  /* Accent ramp — emerald */
+  --color-accent-100: #e2f6ec;
+  --color-accent-200: #c1ecd8;
+  --color-accent-300: #8fddb8;
+  --color-accent-400: #4fca92;
+  --color-accent-500: #22c07a;
+  --color-accent-600: #0ea25c;
+  --color-accent-700: #0b7d47;
+  --color-accent-800: #095e36;
+  --color-accent-900: #073d24;
 
   --font-heading: 'Archivo', system-ui, sans-serif;
   --font-heading-weight: 800;
@@ -45,13 +45,13 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
 
-  --shadow-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
-  --shadow-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
-  --shadow-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.07);
+  --shadow-md: 0 6px 16px rgba(16, 24, 40, 0.09);
+  --shadow-lg: 0 16px 40px rgba(16, 24, 40, 0.13);
 }
 
 *,
@@ -93,7 +93,7 @@ h3 { font-size: 25px; }
 h4 { font-size: 20px; }
 
 p { margin: 0 0 var(--space-3); }
-a { color: var(--color-accent); text-underline-offset: 3px; }
+a { color: var(--color-accent-700); text-underline-offset: 3px; }
 
 .text-muted { color: color-mix(in srgb, var(--color-text) 55%, transparent); }
 
@@ -131,7 +131,7 @@ input[type='number']::-webkit-inner-spin-button {
   background: transparent;
   border: 1px solid transparent;
   padding: calc(var(--space-2) * 0.85) var(--space-3);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
 }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn-primary { background: var(--color-accent); color: var(--color-bg); }
@@ -160,7 +160,7 @@ input[type='number']::-webkit-inner-spin-button {
   caret-color: var(--color-accent);
   background: var(--color-surface);
   border: 1px solid var(--color-divider);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
 }
 .input:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
 .input:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
@@ -179,5 +179,6 @@ input[type='number']::-webkit-inner-spin-button {
   font-size: 11px;
   letter-spacing: 0.02em;
   padding: 3px 10px;
+  border-radius: 999px;
 }
 .tag-neutral { background: var(--color-neutral-100); color: var(--color-neutral-800); }

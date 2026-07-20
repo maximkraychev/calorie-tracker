@@ -5,8 +5,8 @@ import { macrosOf, round } from '../../../shared/utils/nutrition.utils';
 import { Icon } from '../../../shared/ui/icon';
 import type { LogEntry } from '../models/diary.models';
 
-// One logged food, as a full-width tappable row. Presentational: it derives its own
-// kcal/meta from the entry and emits `open` when tapped.
+// One logged food, as a full-width tappable row on the meal-detail page. Presentational:
+// it derives its own kcal/meta from the entry and emits `open` (edit) when tapped.
 @Component({
   selector: 'ct-entry-row',
   imports: [Icon],
@@ -20,7 +20,7 @@ import type { LogEntry } from '../models/diary.models';
         <div class="kcal">{{ kcal() }}</div>
         <div class="text-muted unit">{{ i18n.t('diary.kcal') }}</div>
       </div>
-      <ct-icon name="chevron-right" class="chev" />
+      <ct-icon name="pencil" class="chev" />
     </button>
   `,
   styles: `

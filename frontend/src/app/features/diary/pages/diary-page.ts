@@ -2,11 +2,15 @@ import { Component, computed, inject } from '@angular/core';
 
 import { I18n } from '../../../core/i18n/i18n';
 import type { TranslationKey } from '../../../core/i18n/translations';
+import { GoalsStore } from '../../../core/goals/goals.store';
+import { AccountSheet } from '../../../core/layout/account-sheet.store';
 import { startOfDay } from '../../../shared/utils/date.utils';
-import { round } from '../../../shared/utils/nutrition.utils';
 import { Icon } from '../../../shared/ui/icon';
 import { DiaryStore } from '../data/diary.store';
-import { MealSectionComponent } from '../components/meal-section';
+import { DailyTotals } from '../components/daily-totals';
+import { MealCard } from '../components/meal-card';
+import { MealDetail } from '../components/meal-detail';
+import { EntryEditSheet } from '../components/entry-edit-sheet';
 import type { MealType } from '../models/diary.models';
 
 const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
@@ -16,10 +20,12 @@ const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
   snack: 'meal.snack',
 };
 
-// Home screen: date navigator, the day's totals ink-block, and the four meal sections.
+// Home screen: date navigator, the day's totals panel (calorie ring + macro bars vs.
+// the daily goals), and one summary card per meal. Meal cards open the meal-detail
+// overlay; its items open the entry-edit sheet, both rendered here above the page.
 @Component({
   selector: 'ct-diary-page',
-  imports: [Icon, MealSectionComponent],
+  imports: [Icon, DailyTotals, MealCard, MealDetail, EntryEditSheet],
   template: `
     <div class="page">
       <div class="datenav">
@@ -43,6 +49,14 @@ const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
         >
           <ct-icon name="chevron-right" />
         </button>
+        <button
+          class="btn btn-icon account"
+          type="button"
+          [attr.aria-label]="i18n.t('account.title')"
+          (click)="accountSheet.show()"
+        >
+          <ct-icon name="user" />
+        </button>
       </div>
 
       @if (!store.isToday()) {
@@ -51,36 +65,40 @@ const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
         </button>
       }
 
-      <div class="totals">
-        <div class="totals-top">
-          <span class="total-kcal">{{ round(store.totals().kcal) }}</span>
-          <span class="total-kcal-label">{{ i18n.t('diary.kcalToday') }}</span>
-        </div>
-        <div class="macros">
-          <div class="macro divider-r">
-            <div class="macro-label">{{ i18n.t('diary.protein') }}</div>
-            <div class="macro-value">{{ round(store.totals().protein) }}<span class="unit"> g</span></div>
-          </div>
-          <div class="macro divider-r">
-            <div class="macro-label">{{ i18n.t('diary.carbs') }}</div>
-            <div class="macro-value">{{ round(store.totals().carbs) }}<span class="unit"> g</span></div>
-          </div>
-          <div class="macro">
-            <div class="macro-label">{{ i18n.t('diary.fat') }}</div>
-            <div class="macro-value">{{ round(store.totals().fat) }}<span class="unit"> g</span></div>
-          </div>
-        </div>
-      </div>
+      <ct-daily-totals [totals]="store.totals()" [goals]="goalsStore.goals()" />
 
+      <div class="meals-head">
+        <h4>{{ i18n.t('diary.meals') }}</h4>
+      </div>
       @for (section of store.mealSections(); track section.type) {
-        <ct-meal-section
+        <ct-meal-card
           [label]="mealLabel(section.type)"
           [section]="section"
+          (open)="store.openMealDetail(section.type)"
           (add)="onAdd(section.type)"
-          (openEntry)="onOpenEntry($event)"
         />
       }
     </div>
+
+    @if (store.mealDetailSection(); as section) {
+      <ct-meal-detail
+        [label]="mealLabel(section.type)"
+        [section]="section"
+        [dateSub]="dateSub()"
+        (back)="store.closeMealDetail()"
+        (add)="onAdd(section.type)"
+        (openEntry)="store.openEntryEdit($event)"
+      />
+    }
+
+    @if (store.entryEdit(); as entry) {
+      <ct-entry-edit-sheet
+        [entry]="entry"
+        (close)="store.closeEntryEdit()"
+        (save)="saveEntry(entry.id, $event)"
+        (delete)="deleteEntry(entry.id)"
+      />
+    }
   `,
   styles: `
     .page { padding: var(--space-4) var(--space-4) 90px; }
@@ -91,50 +109,33 @@ const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
       margin-bottom: var(--space-4);
     }
     .datenav .btn-icon { border: 1px solid var(--color-divider); }
+    .datenav .account { margin-left: var(--space-2); }
     .date { flex: 1; text-align: center; line-height: 1.1; }
     .date-label { font-family: var(--font-heading); font-weight: 800; font-size: 18px; }
     .date-sub { font-size: 12px; }
     .jump { width: 100%; justify-content: center; margin-bottom: var(--space-4); }
 
-    .totals {
-      background: var(--color-text);
-      color: var(--color-bg);
-      padding: var(--space-4);
-      margin-bottom: var(--space-6);
+    .meals-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--color-divider);
+      padding-bottom: var(--space-2);
+      margin-bottom: var(--space-3);
     }
-    .totals-top { display: flex; align-items: baseline; gap: var(--space-2); }
-    .total-kcal { font-family: var(--font-heading); font-weight: 800; font-size: 44px; line-height: 0.9; }
-    .total-kcal-label {
-      font-size: 13px;
-      letter-spacing: 0.1em;
+    .meals-head h4 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      opacity: 0.7;
     }
-    .macros {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      margin-top: var(--space-4);
-      padding-top: var(--space-3);
-      border-top: 1px solid rgba(255, 255, 255, 0.25);
-    }
-    .macro { padding: 0 var(--space-2); }
-    .macro:first-child { padding-left: 0; }
-    .macro:last-child { padding-right: 0; }
-    .divider-r { border-right: 1px solid rgba(255, 255, 255, 0.25); }
-    .macro-label {
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      opacity: 0.6;
-    }
-    .macro-value { font-family: var(--font-heading); font-weight: 800; font-size: 22px; }
-    .unit { font-size: 12px; opacity: 0.6; }
   `,
 })
 export class DiaryPage {
   protected readonly i18n = inject(I18n);
   protected readonly store = inject(DiaryStore);
-  protected readonly round = round;
+  protected readonly goalsStore = inject(GoalsStore);
+  protected readonly accountSheet = inject(AccountSheet);
 
   protected readonly dateLabel = computed(() => {
     const offset = this.store.dayOffset();
@@ -159,9 +160,16 @@ export class DiaryPage {
     return this.i18n.t(MEAL_LABEL_KEYS[type]);
   }
 
-  // TODO(next pass): open the Add-Food sheet pre-targeted to this meal.
-  protected onAdd(_meal: MealType): void {}
+  protected saveEntry(id: string, grams: number): void {
+    this.store.updateEntryGrams(id, grams);
+    this.store.closeEntryEdit();
+  }
 
-  // TODO(next pass): open the Entry-Edit bottom sheet for this entry.
-  protected onOpenEntry(_entryId: string): void {}
+  protected deleteEntry(id: string): void {
+    this.store.removeEntry(id);
+    this.store.closeEntryEdit();
+  }
+
+  // TODO(next pass): open the Add-Food flow pre-targeted to this meal (z 55).
+  protected onAdd(_meal: MealType): void {}
 }

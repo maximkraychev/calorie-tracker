@@ -3,7 +3,7 @@ import { computed, Service, signal } from '@angular/core';
 import { isoDateForOffset } from '../../../shared/utils/date.utils';
 import { sumMacros } from '../../../shared/utils/nutrition.utils';
 import { seedDiary } from './diary.seed';
-import { MEAL_ORDER, type LogEntry, type MealSection } from '../models/diary.models';
+import { MEAL_ORDER, type LogEntry, type MealSection, type MealType } from '../models/diary.models';
 
 // Diary state for the selected day. Root-provided so the chosen day and entries
 // survive tab navigation. In-memory for now (seeded); a diary API will replace the
@@ -12,6 +12,8 @@ import { MEAL_ORDER, type LogEntry, type MealSection } from '../models/diary.mod
 export class DiaryStore {
   private readonly _dayOffset = signal(0);
   private readonly _entriesByDate = signal<Record<string, LogEntry[]>>(seedDiary());
+  private readonly _mealDetail = signal<MealType | null>(null);
+  private readonly _entryEditId = signal<string | null>(null);
 
   /** Days from today (0 = today, -1 = yesterday). */
   readonly dayOffset = this._dayOffset.asReadonly();
@@ -28,6 +30,35 @@ export class DiaryStore {
       return { type, entries: mealEntries, subtotalKcal: sumMacros(mealEntries).kcal };
     });
   });
+
+  /** Which meal's detail overlay is open (null = none). */
+  readonly mealDetail = this._mealDetail.asReadonly();
+  readonly mealDetailSection = computed<MealSection | null>(() => {
+    const meal = this._mealDetail();
+    return meal ? (this.mealSections().find((section) => section.type === meal) ?? null) : null;
+  });
+
+  /** The entry open in the edit sheet (null = closed, or the entry no longer exists). */
+  readonly entryEdit = computed<LogEntry | null>(() => {
+    const id = this._entryEditId();
+    return id ? (this.entries().find((entry) => entry.id === id) ?? null) : null;
+  });
+
+  openMealDetail(meal: MealType): void {
+    this._mealDetail.set(meal);
+  }
+
+  closeMealDetail(): void {
+    this._mealDetail.set(null);
+  }
+
+  openEntryEdit(id: string): void {
+    this._entryEditId.set(id);
+  }
+
+  closeEntryEdit(): void {
+    this._entryEditId.set(null);
+  }
 
   previousDay(): void {
     this._dayOffset.update((offset) => offset - 1);

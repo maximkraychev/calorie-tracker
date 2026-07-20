@@ -21,9 +21,14 @@ export class I18n {
   /**
    * Translate a key for the current language. Reads the `lang` signal, so calling
    * it in a template (`{{ i18n.t('nav.diary') }}`) is reactive to language changes.
+   * `params` fill `{name}` placeholders (e.g. `t('diary.manyItems', { n: 3 })`).
    */
-  t(key: TranslationKey): string {
-    return dictionaries[this._lang()][key];
+  t(key: TranslationKey, params?: Record<string, string | number>): string {
+    const text = dictionaries[this._lang()][key];
+    if (!params) return text;
+    return text.replace(/\{(\w+)\}/g, (match, name: string) =>
+      name in params ? String(params[name]) : match,
+    );
   }
 
   setLanguage(lang: Language): void {
