@@ -1,7 +1,7 @@
 import { ApplicationRef, inject, Service, signal } from '@angular/core';
 import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
-import { concat, fromEvent, interval } from 'rxjs';
-import { filter, first, map } from 'rxjs/operators';
+import { concat, fromEvent, interval, merge } from 'rxjs';
+import { filter, first, map, throttleTime } from 'rxjs/operators';
 
 // How often to poll the server for a newer app version once the app is stable.
 const UPDATE_POLL_MS = 30 * 60 * 1000; // 30 minutes
@@ -30,14 +30,28 @@ export class PwaUpdate {
       .subscribe(() => this._ready.set(true));
 
     // Poll for updates, but only after the app first stabilises (Angular's guidance —
-    // checking before that can race with the initial load). Also re-check whenever the
-    // PWA is brought back to the foreground, so reopening picks up a fresh deploy fast.
+    // checking before that can race with the initial load).
     const stable$ = this.appRef.isStable.pipe(first((stable) => stable));
-    const onResume$ = fromEvent(document, 'visibilitychange').pipe(
-      filter(() => document.visibilityState === 'visible'),
-    );
     concat(stable$, interval(UPDATE_POLL_MS)).subscribe(() => this.check());
-    onResume$.pipe(map(() => undefined)).subscribe(() => this.check());
+
+    // Re-check whenever the PWA comes back to the foreground, so reopening picks up a
+    // fresh deploy fast. iOS standalone is fussy here: a resume can restore the page
+    // from bfcache without firing `visibilitychange`, so we also listen for `pageshow`
+    // (fires on bfcache restore) and window `focus`. throttleTime dedupes the burst of
+    // events a single resume can emit into one actual check.
+    const onResume$ = merge(
+      fromEvent(document, 'visibilitychange').pipe(
+        filter(() => document.visibilityState === 'visible'),
+      ),
+      fromEvent(window, 'pageshow'),
+      fromEvent(window, 'focus'),
+    );
+    onResume$
+      .pipe(
+        throttleTime(3000, undefined, { leading: true, trailing: true }),
+        map(() => undefined),
+      )
+      .subscribe(() => this.check());
   }
 
   private async check(): Promise<void> {
