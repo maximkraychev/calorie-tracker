@@ -4,4 +4,9 @@
 // the auth cookie first-party (works on Safari/iOS) and avoids CORS entirely.
 export const environment = {
   apiBaseUrl: '/api',
+  // Open Food Facts production. Public read API — no auth needed.
+  off: {
+    searchUrl: 'https://world.openfoodfacts.org/cgi/search.pl',
+    basicAuth: null as string | null,
+  },
 };

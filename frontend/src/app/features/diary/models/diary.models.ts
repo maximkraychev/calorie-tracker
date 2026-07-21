@@ -1,9 +1,17 @@
+import type { TranslationKey } from '../../../core/i18n/translations';
 import type { Portion } from '../../../shared/utils/nutrition.utils';
 
 // The four meal buckets a diary day is split into, in display order.
 export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export const MEAL_ORDER: readonly MealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+export const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
+  breakfast: 'meal.breakfast',
+  lunch: 'meal.lunch',
+  dinner: 'meal.dinner',
+  snack: 'meal.snack',
+};
 
 // Where a logged food came from. Nutrition is snapshotted at log time regardless of
 // source, so later edits to a custom food/recipe never touch past entries.

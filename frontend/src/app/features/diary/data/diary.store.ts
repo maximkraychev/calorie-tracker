@@ -14,6 +14,7 @@ export class DiaryStore {
   private readonly _entriesByDate = signal<Record<string, LogEntry[]>>(seedDiary());
   private readonly _mealDetail = signal<MealType | null>(null);
   private readonly _entryEditId = signal<string | null>(null);
+  private readonly _addFoodMeal = signal<MealType | null>(null);
 
   /** Days from today (0 = today, -1 = yesterday). */
   readonly dayOffset = this._dayOffset.asReadonly();
@@ -43,6 +44,17 @@ export class DiaryStore {
     const id = this._entryEditId();
     return id ? (this.entries().find((entry) => entry.id === id) ?? null) : null;
   });
+
+  /** Which meal the Add-Food overlay targets (null = closed). */
+  readonly addFood = this._addFoodMeal.asReadonly();
+
+  openAddFood(meal: MealType): void {
+    this._addFoodMeal.set(meal);
+  }
+
+  closeAddFood(): void {
+    this._addFoodMeal.set(null);
+  }
 
   openMealDetail(meal: MealType): void {
     this._mealDetail.set(meal);

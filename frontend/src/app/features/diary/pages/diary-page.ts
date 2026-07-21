@@ -1,7 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 
 import { I18n } from '../../../core/i18n/i18n';
-import type { TranslationKey } from '../../../core/i18n/translations';
 import { GoalsStore } from '../../../core/goals/goals.store';
 import { AccountSheet } from '../../../core/layout/account-sheet.store';
 import { startOfDay } from '../../../shared/utils/date.utils';
@@ -11,21 +10,15 @@ import { DailyTotals } from '../components/daily-totals';
 import { MealCard } from '../components/meal-card';
 import { MealDetail } from '../components/meal-detail';
 import { EntryEditSheet } from '../components/entry-edit-sheet';
-import type { MealType } from '../models/diary.models';
-
-const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
-  breakfast: 'meal.breakfast',
-  lunch: 'meal.lunch',
-  dinner: 'meal.dinner',
-  snack: 'meal.snack',
-};
+import { AddFoodOverlay } from '../components/add-food-overlay';
+import { MEAL_LABEL_KEYS, type LogEntry, type MealType } from '../models/diary.models';
 
 // Home screen: date navigator, the day's totals panel (calorie ring + macro bars vs.
 // the daily goals), and one summary card per meal. Meal cards open the meal-detail
 // overlay; its items open the entry-edit sheet, both rendered here above the page.
 @Component({
   selector: 'ct-diary-page',
-  imports: [Icon, DailyTotals, MealCard, MealDetail, EntryEditSheet],
+  imports: [Icon, DailyTotals, MealCard, MealDetail, EntryEditSheet, AddFoodOverlay],
   template: `
     <div class="page">
       <div class="datenav">
@@ -99,6 +92,10 @@ const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
         (delete)="deleteEntry(entry.id)"
       />
     }
+
+    @if (store.addFood(); as meal) {
+      <ct-add-food-overlay [meal]="meal" (close)="store.closeAddFood()" (log)="logFood($event)" />
+    }
   `,
   styles: `
     .page { padding: var(--space-4) var(--space-4) 90px; }
@@ -170,6 +167,12 @@ export class DiaryPage {
     this.store.closeEntryEdit();
   }
 
-  // TODO(next pass): open the Add-Food flow pre-targeted to this meal (z 55).
-  protected onAdd(_meal: MealType): void {}
+  protected onAdd(meal: MealType): void {
+    this.store.openAddFood(meal);
+  }
+
+  protected logFood(entry: Omit<LogEntry, 'id'>): void {
+    this.store.addEntry(entry);
+    this.store.closeAddFood();
+  }
 }

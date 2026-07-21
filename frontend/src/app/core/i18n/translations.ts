@@ -50,6 +50,21 @@ export const en = {
   'diary.kcal': 'kcal',
   'diary.back': 'Back',
 
+  // Add food (Open Food Facts search)
+  'addFood.modeSearch': 'Search',
+  'addFood.modeScan': 'Scan',
+  'addFood.modePhoto': 'Photo',
+  'addFood.modeManual': 'Manual',
+  'addFood.searchPlaceholder': 'Search the food database',
+  'addFood.minChars': 'Type at least {n} characters to search.',
+  'addFood.searching': 'Searching…',
+  'addFood.noMatches': 'No matches.',
+  'addFood.error': 'Search failed. Check your connection and try again.',
+  'addFood.retry': 'Try again',
+  'addFood.generic': 'Generic',
+  'addFood.meal': 'Meal',
+  'addFood.logFood': 'Log food',
+
   // Entry edit
   'entry.portionGrams': 'Portion (grams)',
   'entry.decreaseGrams': 'Decrease grams',
@@ -157,6 +172,21 @@ export const bg: Record<TranslationKey, string> = {
   'diary.addFoodTo': 'Добави храна към {meal}',
   'diary.kcal': 'ккал',
   'diary.back': 'Назад',
+
+  // Add food (Open Food Facts search)
+  'addFood.modeSearch': 'Търсене',
+  'addFood.modeScan': 'Сканиране',
+  'addFood.modePhoto': 'Снимка',
+  'addFood.modeManual': 'Ръчно',
+  'addFood.searchPlaceholder': 'Търси в базата с храни',
+  'addFood.minChars': 'Въведи поне {n} символа за търсене.',
+  'addFood.searching': 'Търсене…',
+  'addFood.noMatches': 'Няма съвпадения.',
+  'addFood.error': 'Търсенето не успя. Провери връзката и опитай отново.',
+  'addFood.retry': 'Опитай отново',
+  'addFood.generic': 'Без марка',
+  'addFood.meal': 'Хранене',
+  'addFood.logFood': 'Запиши храната',
 
   // Entry edit
   'entry.portionGrams': 'Порция (грамове)',
