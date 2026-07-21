@@ -23,10 +23,6 @@ import type { FoodSearchResult } from '../models/food-search.models';
 const PAGE_SIZE = 50;
 const DISPLAY_SIZE = 20;
 
-// OFF asks apps to identify themselves. Browsers reserve the real User-Agent
-// header, but OFF's CORS policy explicitly allows X-User-Agent instead.
-const APP_USER_AGENT = 'CalorieTracker/1.0 (maxim.kraychev@gmail.com)';
-
 type Nutriments = Partial<Record<string, number>>;
 
 // v1 search product (only the fields we request). `product_name` is localized via
@@ -51,13 +47,15 @@ interface SearchResponse {
 export class FoodSearchApi {
   private readonly http = inject(HttpClient);
 
-  private readonly headers: Record<string, string> = {
-    'X-User-Agent': APP_USER_AGENT,
-    // Staging only: a fixed shared credential OFF uses to keep crawlers out.
-    ...(environment.off.basicAuth
-      ? { Authorization: `Basic ${btoa(environment.off.basicAuth)}` }
-      : {}),
-  };
+  // A GET carrying only CORS-"simple" headers skips the preflight (OPTIONS) hop.
+  // OFF's production host frequently 503s that preflight under load, which then
+  // blocks the GET, so we send no custom X-User-Agent from the browser: the real
+  // browser UA still identifies us, and OFF permits low-volume reads without it.
+  // Staging keeps the Basic credential (dev builds only) — it forces a preflight,
+  // but staging is lightly loaded so that's fine.
+  private readonly headers: Record<string, string> = environment.off.basicAuth
+    ? { Authorization: `Basic ${btoa(environment.off.basicAuth)}` }
+    : {};
 
   search(query: string, lang: Language): Observable<FoodSearchResult[]> {
     const params = {
