@@ -18,13 +18,20 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       <div class="ring-wrap">
         <div class="ring">
           <svg width="210" height="210" viewBox="0 0 210 210">
+            <defs>
+              <linearGradient id="ctRingGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#112D4E" />
+                <stop offset="0.55" stop-color="#3F72AF" />
+                <stop offset="1" stop-color="#7ba3d4" />
+              </linearGradient>
+            </defs>
             <circle cx="105" cy="105" r="93" fill="none" stroke="var(--color-neutral-100)" stroke-width="14" />
             <circle
               cx="105"
               cy="105"
               r="93"
               fill="none"
-              stroke="var(--color-accent)"
+              stroke="url(#ctRingGrad)"
               stroke-width="14"
               stroke-linecap="round"
               [attr.stroke-dasharray]="circumference"
@@ -41,27 +48,20 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       </div>
 
       <div class="macros">
-        <div class="macro">
-          <div class="macro-label">{{ i18n.t('diary.protein') }}</div>
-          <div class="macro-value">
-            {{ round(totals().protein) }}<span class="macro-goal"> / {{ goals().protein }} g</span>
+        @for (m of macroRows(); track m.key) {
+          <div class="macro">
+            <div class="macro-label">
+              <span class="dot" [style.background]="m.color"></span>
+              <span [style.color]="m.color">{{ m.label }}</span>
+            </div>
+            <div class="macro-value">
+              {{ round(m.value) }}<span class="macro-goal"> / {{ m.goal }} g</span>
+            </div>
+            <div class="bar" [style.background]="m.track">
+              <div class="fill" [style.background]="m.color" [style.width.%]="barWidth(m.value, m.goal)"></div>
+            </div>
           </div>
-          <div class="bar"><div class="fill" [style.width.%]="barWidth(totals().protein, goals().protein)"></div></div>
-        </div>
-        <div class="macro">
-          <div class="macro-label">{{ i18n.t('diary.carbs') }}</div>
-          <div class="macro-value">
-            {{ round(totals().carbs) }}<span class="macro-goal"> / {{ goals().carbs }} g</span>
-          </div>
-          <div class="bar"><div class="fill" [style.width.%]="barWidth(totals().carbs, goals().carbs)"></div></div>
-        </div>
-        <div class="macro">
-          <div class="macro-label">{{ i18n.t('diary.fat') }}</div>
-          <div class="macro-value">
-            {{ round(totals().fat) }}<span class="macro-goal"> / {{ goals().fat }} g</span>
-          </div>
-          <div class="bar"><div class="fill" [style.width.%]="barWidth(totals().fat, goals().fat)"></div></div>
-        </div>
+        }
       </div>
     </div>
   `,
@@ -114,15 +114,19 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       padding-bottom: 12px;
     }
     .macro-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 11px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      opacity: 0.6;
+      font-weight: 700;
     }
+    .macro-label .dot { width: 8px; height: 8px; border-radius: 99px; flex: none; }
     .macro-value { font-family: var(--font-heading); font-weight: 800; font-size: 20px; margin-top: 2px; }
     .macro-goal { font-size: 12px; opacity: 0.6; }
-    .bar { height: 6px; background: var(--color-neutral-100); border-radius: 99px; margin-top: 8px; }
-    .fill { height: 100%; background: var(--color-accent); border-radius: 99px; }
+    .bar { height: 6px; border-radius: 99px; margin-top: 8px; overflow: hidden; }
+    .fill { height: 100%; border-radius: 99px; }
   `,
 })
 export class DailyTotals {
@@ -132,6 +136,35 @@ export class DailyTotals {
 
   readonly totals = input.required<Macros>();
   readonly goals = input.required<Goals>();
+
+  // Per-macro display rows — each with its own color + tint token (indigo/amber/rose).
+  // Labels go through i18n.t(), so the computed re-runs on a language switch.
+  protected readonly macroRows = computed(() => [
+    {
+      key: 'protein',
+      label: this.i18n.t('diary.protein'),
+      color: 'var(--macro-protein)',
+      track: 'var(--macro-protein-100)',
+      value: this.totals().protein,
+      goal: this.goals().protein,
+    },
+    {
+      key: 'carbs',
+      label: this.i18n.t('diary.carbs'),
+      color: 'var(--macro-carbs)',
+      track: 'var(--macro-carbs-100)',
+      value: this.totals().carbs,
+      goal: this.goals().carbs,
+    },
+    {
+      key: 'fat',
+      label: this.i18n.t('diary.fat'),
+      color: 'var(--macro-fat)',
+      track: 'var(--macro-fat-100)',
+      value: this.totals().fat,
+      goal: this.goals().fat,
+    },
+  ]);
 
   protected readonly overBudget = computed(() => this.totals().kcal > this.goals().kcal);
   protected readonly kcalRemaining = computed(() =>

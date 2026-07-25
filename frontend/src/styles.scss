@@ -1,6 +1,6 @@
 /* Global styles — Calorie Tracker Design System.
    Synced from the Claude Design "Calorie Tracker Design System" project (the source of
-   truth for the look) via DesignSync. Soft, modern, health-forward: an emerald accent on
+   truth for the look) via DesignSync. Soft, modern, health-forward: a steel-blue accent on
    light cool-neutral grounds, generous rounded corners, soft elevation, Archivo throughout.
    The :root block reproduces the DS token files (colors / typography / spacing / elevation);
    below it are the app's own component classes and practical utilities, marked "App-specific".
@@ -10,29 +10,29 @@
 
 :root {
   /* ── Colors (tokens/colors.css) ──────────────────────────── */
-  --color-bg: #f4f6f5;
+  --color-bg: #f9f7f7;
   --color-surface: #ffffff;
-  --color-text: #171a1f;
-  --color-text-muted: #6b7280;
-  --color-divider: #e4e8ee;
+  --color-text: #112d4e;
+  --color-text-muted: #5b6b82;
+  --color-divider: #dbe2ef;
 
   /* Neutral ramp */
-  --color-neutral-100: #eef1f4;
-  --color-neutral-200: #dfe3e8;
-  --color-neutral-300: #c8ced6;
-  --color-neutral-500: #8b93a0;
-  --color-neutral-700: #4b525d;
-  --color-neutral-900: #14181f;
+  --color-neutral-100: #e9eef5;
+  --color-neutral-200: #dbe2ef;
+  --color-neutral-300: #c3cfe0;
+  --color-neutral-500: #8496ad;
+  --color-neutral-700: #46566b;
+  --color-neutral-900: #0c2038;
 
-  /* Emerald accent ramp */
-  --color-accent-100: #e2f6ec;
-  --color-accent-200: #c1ecd8;
-  --color-accent-300: #8fdcb8;
-  --color-accent: #12b76a;
-  --color-accent-500: #12b76a;
-  --color-accent-600: #0ea25c;
-  --color-accent-700: #0b7d47;
-  --color-accent-800: #095e36;
+  /* Steel blue accent ramp */
+  --color-accent-100: #e4ecf6;
+  --color-accent-200: #cddcee;
+  --color-accent-300: #9bb8db;
+  --color-accent: #3f72af;
+  --color-accent-500: #3f72af;
+  --color-accent-600: #345f92;
+  --color-accent-700: #2c5182;
+  --color-accent-800: #1f3f66;
 
   /* Semantic aliases */
   --surface-card: var(--color-surface);
@@ -55,6 +55,12 @@
   --feedback-danger: var(--color-danger);
   --feedback-danger-bg: var(--color-danger-100);
   --feedback-danger-text: var(--color-danger-700);
+
+  /* Per-macro colors — distinct from the accent (tokens/colors.css). Each has a solid
+     color (dot / label / bar fill / goal ring) and a `-100` tint (bar & ring track). */
+  --macro-protein: #6366f1;   --macro-protein-100: #edeffe;   /* indigo */
+  --macro-carbs: #f59e0b;     --macro-carbs-100: #fef2e0;     /* amber  */
+  --macro-fat: #f43f5e;       --macro-fat-100: #ffe8ed;       /* rose   */
 
   /* ── Typography (tokens/typography.css) ──────────────────── */
   --font-heading: 'Archivo', system-ui, -apple-system, sans-serif;
@@ -107,7 +113,7 @@
   /* Tokens existing app components reference that the DS token set doesn't
      define directly. Kept so components render unchanged. */
   --font-heading-weight: var(--weight-black); /* DS names this --weight-black */
-  --color-neutral-800: #333b47;               /* DS ramp skips 800; app uses it once */
+  --color-neutral-800: #2b3a4f;               /* DS ramp skips 800; app uses it once (blue-tinted to match) */
 }
 
 /* ── Base (tokens/base.css) ──────────────────────────────── */
@@ -225,7 +231,14 @@ input[type='number']::-webkit-inner-spin-button {
   border-radius: var(--radius-sm);
 }
 .input:hover { border-color: color-mix(in srgb, var(--color-text) 45%, transparent); }
-.input:focus-visible { border-color: var(--color-accent); outline-offset: 0; }
+/* Inputs opt out of the square focus outline in favour of an accent border + a soft
+   rounded ring — still a clearly visible focus state (keeps keyboard a11y / WCAG AA),
+   just not the hard box. */
+.input:focus-visible {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
+}
 
 /* App-specific: iOS Safari auto-zooms on focus when a field's font-size is below 16px.
    Bump to 16px on touch devices to keep the field tap-stable; keep the 14px design on pointer. */

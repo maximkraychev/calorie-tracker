@@ -296,6 +296,13 @@ const MODES: readonly AddFoodMode[] = [
       padding: 0 10px;
       border-radius: 12px;
       margin-bottom: var(--space-4);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    /* The field is borderless inside the box, so the focus ring belongs on the box
+       (wrapping icon + input), not the inner input. */
+    .searchbox:focus-within {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
     }
     .search-icon { opacity: 0.5; }
     .query {
@@ -303,6 +310,12 @@ const MODES: readonly AddFoodMode[] = [
       border: 0;
       background: transparent;
       padding-left: 0;
+    }
+    /* Suppress the global .input focus ring on the inner field (higher specificity wins). */
+    .searchbox .query:focus-visible {
+      outline: none;
+      border: 0;
+      box-shadow: none;
     }
 
     .note { font-size: 13px; padding: var(--space-4) 0; }

@@ -94,10 +94,16 @@ export const en = {
   // Daily goals
   'goals.title': 'Daily goals',
   'goals.calorieGoal': 'Calorie goal (kcal)',
-  'goals.macroGoals': 'Macro goals (grams / day)',
+  'goals.macroGoals': 'Macro goals',
   'goals.proteinG': 'Protein g',
   'goals.carbsG': 'Carbs g',
   'goals.fatG': 'Fat g',
+  'goals.colGrams': 'Grams',
+  'goals.colPercent': '% of kcal',
+  'goals.protein': 'Protein',
+  'goals.carbs': 'Carbs',
+  'goals.fat': 'Fat',
+  'goals.macrosSum': '{pct}% of calories',
   'goals.save': 'Save goals',
 
   // Auth — shared
@@ -232,10 +238,16 @@ export const bg: Record<TranslationKey, string> = {
   // Daily goals
   'goals.title': 'Дневни цели',
   'goals.calorieGoal': 'Калорийна цел (ккал)',
-  'goals.macroGoals': 'Целеви макроси (грамове / ден)',
+  'goals.macroGoals': 'Целеви макроси',
   'goals.proteinG': 'Протеини г',
   'goals.carbsG': 'Въглехидрати г',
   'goals.fatG': 'Мазнини г',
+  'goals.colGrams': 'Грамове',
+  'goals.colPercent': '% от ккал',
+  'goals.protein': 'Протеини',
+  'goals.carbs': 'Въглехидрати',
+  'goals.fat': 'Мазнини',
+  'goals.macrosSum': '{pct}% от калориите',
   'goals.save': 'Запази целите',
 
   // Auth — shared
