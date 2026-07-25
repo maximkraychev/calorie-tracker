@@ -49,6 +49,9 @@ export const en = {
   'diary.addFoodTo': 'Add food to {meal}',
   'diary.kcal': 'kcal',
   'diary.back': 'Back',
+  'diary.loading': 'Loading your day…',
+  'diary.loadError': "Couldn't load this day.",
+  'diary.retry': 'Retry',
 
   // Add food (Open Food Facts search)
   'addFood.modeSearch': 'Search',
@@ -184,6 +187,9 @@ export const bg: Record<TranslationKey, string> = {
   'diary.addFoodTo': 'Добави храна към {meal}',
   'diary.kcal': 'ккал',
   'diary.back': 'Назад',
+  'diary.loading': 'Зареждане на деня…',
+  'diary.loadError': 'Денят не можа да се зареди.',
+  'diary.retry': 'Опитай пак',
 
   // Add food (Open Food Facts search)
   'addFood.modeSearch': 'Търсене',

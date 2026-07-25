@@ -58,6 +58,17 @@ import { MEAL_LABEL_KEYS, type LogEntry, type MealType } from '../models/diary.m
         </button>
       }
 
+      @if (store.status() === 'error') {
+        <div class="load-error" role="alert">
+          <span>{{ i18n.t('diary.loadError') }}</span>
+          <button class="btn btn-secondary" type="button" (click)="store.reload()">
+            {{ i18n.t('diary.retry') }}
+          </button>
+        </div>
+      } @else if (store.status() === 'loading' && store.entries().length === 0) {
+        <div class="loading text-muted" role="status">{{ i18n.t('diary.loading') }}</div>
+      }
+
       <ct-daily-totals [totals]="store.totals()" [goals]="goalsStore.goals()" />
 
       <div class="meals-head">
@@ -111,6 +122,20 @@ import { MEAL_LABEL_KEYS, type LogEntry, type MealType } from '../models/diary.m
     .date-label { font-family: var(--font-heading); font-weight: 800; font-size: 18px; }
     .date-sub { font-size: 12px; }
     .jump { width: 100%; justify-content: center; margin-bottom: var(--space-4); }
+
+    .loading { text-align: center; padding: var(--space-3) 0; font-size: 13px; }
+    .load-error {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-4);
+      border: 1px solid var(--color-divider);
+      border-radius: 12px;
+      background: var(--color-surface);
+      font-size: 14px;
+    }
 
     .meals-head {
       display: flex;

@@ -554,6 +554,8 @@ export class AddFoodOverlay {
       name: sel.name,
       brand: sel.brand,
       source: this.selectedSource(),
+      // The OFF barcode/product code — provenance for both search picks and scans.
+      externalId: sel.code,
       grams: this.grams(),
       kcalPer100g: sel.kcalPer100g,
       proteinPer100g: sel.proteinPer100g,

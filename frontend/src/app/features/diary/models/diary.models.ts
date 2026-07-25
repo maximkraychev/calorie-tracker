@@ -24,6 +24,8 @@ export interface LogEntry extends Portion {
   name: string;
   brand: string | null;
   source: FoodSource;
+  /** OFF product code for search/barcode entries; provenance only, null otherwise. */
+  externalId: string | null;
 }
 
 // A meal's entries plus its kcal subtotal — the shape the diary page renders per section.
