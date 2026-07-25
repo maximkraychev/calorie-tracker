@@ -8,6 +8,8 @@ export const environment = {
   // fixed off:off basic auth purely to keep search engines out.
   off: {
     searchUrl: 'https://world.openfoodfacts.net/cgi/search.pl',
+    // v2 product-by-barcode base; the scanner appends `/api/v2/product/{code}.json`.
+    productUrl: 'https://world.openfoodfacts.net',
     basicAuth: 'off:off' as string | null,
   },
 };

@@ -65,6 +65,18 @@ export const en = {
   'addFood.meal': 'Meal',
   'addFood.logFood': 'Log food',
 
+  // Barcode scanner
+  'scan.title': 'Scan barcode',
+  'scan.aim': 'Point the camera at a barcode',
+  'scan.starting': 'Starting camera…',
+  'scan.looking': 'Looking up product…',
+  'scan.notFound': "This barcode isn't in the food database.",
+  'scan.again': 'Scan again',
+  'scan.denied': 'Camera access is blocked. Allow camera access in your browser settings, then try again.',
+  'scan.noCamera': 'No camera was found on this device.',
+  'scan.unavailable': 'Scanning needs a camera and a secure (https) connection.',
+  'scan.error': 'Something went wrong while scanning.',
+
   // Entry edit
   'entry.portionGrams': 'Portion (grams)',
   'entry.decreaseGrams': 'Decrease grams',
@@ -187,6 +199,18 @@ export const bg: Record<TranslationKey, string> = {
   'addFood.generic': 'Без марка',
   'addFood.meal': 'Хранене',
   'addFood.logFood': 'Запиши храната',
+
+  // Barcode scanner
+  'scan.title': 'Сканирай баркод',
+  'scan.aim': 'Насочи камерата към баркод',
+  'scan.starting': 'Стартиране на камерата…',
+  'scan.looking': 'Търсене на продукта…',
+  'scan.notFound': 'Този баркод липсва в базата с храни.',
+  'scan.again': 'Сканирай отново',
+  'scan.denied': 'Достъпът до камерата е блокиран. Разреши достъп до камерата в настройките на браузъра и опитай отново.',
+  'scan.noCamera': 'На това устройство не е открита камера.',
+  'scan.unavailable': 'Сканирането изисква камера и защитена (https) връзка.',
+  'scan.error': 'Възникна грешка при сканирането.',
 
   // Entry edit
   'entry.portionGrams': 'Порция (грамове)',

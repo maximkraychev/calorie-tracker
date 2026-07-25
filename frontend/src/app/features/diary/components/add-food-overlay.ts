@@ -18,8 +18,15 @@ import type { TranslationKey } from '../../../core/i18n/translations';
 import { macrosOf, round, round1 } from '../../../shared/utils/nutrition.utils';
 import { Icon, type IconName } from '../../../shared/ui/icon';
 import { FoodSearchApi } from '../data/food-search.api';
-import { MEAL_LABEL_KEYS, MEAL_ORDER, type LogEntry, type MealType } from '../models/diary.models';
+import {
+  MEAL_LABEL_KEYS,
+  MEAL_ORDER,
+  type FoodSource,
+  type LogEntry,
+  type MealType,
+} from '../models/diary.models';
 import type { FoodSearchResult } from '../models/food-search.models';
+import { BarcodeScannerOverlay } from './barcode-scanner-overlay';
 
 // Open Food Facts asks clients not to hammer their search (rate-limited per IP), so
 // queries only fire after a typing pause, never for under 3 characters, and repeats
@@ -34,8 +41,8 @@ type SearchState =
   | { status: 'empty' }
   | { status: 'error' };
 
-// The Add-Food method chips. Only search is live in this pass; the rest render
-// disabled until their flows are built.
+// The Add-Food method chips. Search and scan are live; the rest render disabled until
+// their flows are built.
 interface AddFoodMode {
   key: string;
   icon: IconName;
@@ -45,7 +52,7 @@ interface AddFoodMode {
 
 const MODES: readonly AddFoodMode[] = [
   { key: 'search', icon: 'search', labelKey: 'addFood.modeSearch', enabled: true },
-  { key: 'scan', icon: 'scan', labelKey: 'addFood.modeScan', enabled: false },
+  { key: 'scan', icon: 'scan', labelKey: 'addFood.modeScan', enabled: true },
   { key: 'myfoods', icon: 'apple', labelKey: 'nav.myFoods', enabled: false },
   { key: 'recipes', icon: 'book', labelKey: 'nav.recipes', enabled: false },
   { key: 'photo', icon: 'sparkles', labelKey: 'addFood.modePhoto', enabled: false },
@@ -57,7 +64,7 @@ const MODES: readonly AddFoodMode[] = [
 // preview). Presentational like the other diary overlays — logging is emitted up.
 @Component({
   selector: 'ct-add-food-overlay',
-  imports: [Icon],
+  imports: [Icon, BarcodeScannerOverlay],
   template: `
     <div class="overlay">
       <header class="head">
@@ -157,6 +164,7 @@ const MODES: readonly AddFoodMode[] = [
               [class.active]="mode.key === 'search'"
               [disabled]="!mode.enabled"
               [attr.title]="mode.enabled ? null : i18n.t('common.comingSoon')"
+              (click)="onModeClick(mode)"
             >
               <ct-icon [name]="mode.icon" [size]="16" />
               {{ i18n.t(mode.labelKey) }}
@@ -212,6 +220,10 @@ const MODES: readonly AddFoodMode[] = [
             }
           }
         </div>
+      }
+
+      @if (scannerOpen()) {
+        <ct-barcode-scanner-overlay (found)="onScanFound($event)" (close)="closeScanner()" />
       }
     </div>
   `,
@@ -427,6 +439,11 @@ export class AddFoodOverlay {
   protected readonly selected = signal<FoodSearchResult | null>(null);
   protected readonly grams = signal(100);
   protected readonly targetMeal = linkedSignal(() => this.meal());
+  protected readonly scannerOpen = signal(false);
+
+  // How the current `selected` food was picked — logged as the entry's source so a barcode
+  // scan is distinguishable from a text-search pick.
+  private readonly selectedSource = signal<FoodSource>('search');
 
   // Session cache: settled query → mapped results. Serves repeats (and back-and-forth
   // typing) without re-hitting OFF. Errors are not cached, so retry re-requests.
@@ -493,7 +510,25 @@ export class AddFoodOverlay {
     this.retryTick.update((tick) => tick + 1);
   }
 
+  protected onModeClick(mode: AddFoodMode): void {
+    if (mode.key === 'scan') this.scannerOpen.set(true);
+  }
+
+  protected closeScanner(): void {
+    this.scannerOpen.set(false);
+  }
+
+  // A scanned barcode resolved to an OFF product: close the camera and drop straight into
+  // the portion step, the same place a search pick lands.
+  protected onScanFound(result: FoodSearchResult): void {
+    this.scannerOpen.set(false);
+    this.selectedSource.set('barcode');
+    this.selected.set(result);
+    this.grams.set(100);
+  }
+
   protected pick(result: FoodSearchResult): void {
+    this.selectedSource.set('search');
     this.selected.set(result);
     this.grams.set(100);
   }
@@ -518,7 +553,7 @@ export class AddFoodOverlay {
       mealType: this.targetMeal(),
       name: sel.name,
       brand: sel.brand,
-      source: 'search',
+      source: this.selectedSource(),
       grams: this.grams(),
       kcalPer100g: sel.kcalPer100g,
       proteinPer100g: sel.proteinPer100g,

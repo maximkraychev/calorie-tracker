@@ -7,6 +7,8 @@ export const environment = {
   // Open Food Facts production. Public read API — no auth needed.
   off: {
     searchUrl: 'https://world.openfoodfacts.org/cgi/search.pl',
+    // v2 product-by-barcode base; the scanner appends `/api/v2/product/{code}.json`.
+    productUrl: 'https://world.openfoodfacts.org',
     basicAuth: null as string | null,
   },
 };

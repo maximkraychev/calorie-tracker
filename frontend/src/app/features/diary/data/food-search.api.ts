@@ -5,6 +5,7 @@ import { map, type Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { Language } from '../../../core/i18n/translations';
 import type { FoodSearchResult } from '../models/food-search.models';
+import { toResult, type Product } from './off-product';
 
 // Open Food Facts product search. Their docs point text search at the dedicated
 // Search-a-licious service, but that host sends no CORS headers, so a browser can't
@@ -22,22 +23,6 @@ import type { FoodSearchResult } from '../models/food-search.models';
 // pool and re-rank it locally (see rankResults), then show the top DISPLAY_SIZE.
 const PAGE_SIZE = 50;
 const DISPLAY_SIZE = 20;
-
-type Nutriments = Partial<Record<string, number>>;
-
-// v1 search product (only the fields we request). `product_name` is localized via
-// `lc`; `brands` is a comma-separated string. `nutriments` holds label data;
-// `nutriments_estimated` is OFF's ingredient-based estimate, present for unlabelled
-// products (fresh produce). `nova_group` (1–4) is the processing level — 1 is
-// unprocessed (raw fruit/veg), 4 is ultra-processed — used to rank whole foods up.
-interface Product {
-  code?: string;
-  product_name?: string;
-  brands?: string;
-  nova_group?: number;
-  nutriments?: Nutriments;
-  nutriments_estimated?: Nutriments;
-}
 
 interface SearchResponse {
   products?: Product[];
@@ -112,28 +97,4 @@ function scoreOf(result: FoodSearchResult, product: Product, query: string): num
   else if (product.nova_group === 2) score += 15;
 
   return score;
-}
-
-// Products without a usable name or kcal value are dropped rather than shown as 0 kcal.
-function toResult(product: Product): FoodSearchResult | null {
-  const name = product.product_name?.trim();
-  const nutriments = pickNutriments(product);
-  if (!product.code || !name || !nutriments) return null;
-  return {
-    code: product.code,
-    name,
-    brand: product.brands?.split(',')[0]?.trim() || null,
-    kcalPer100g: nutriments['energy-kcal_100g']!,
-    proteinPer100g: nutriments['proteins_100g'] ?? 0,
-    carbsPer100g: nutriments['carbohydrates_100g'] ?? 0,
-    fatPer100g: nutriments['fat_100g'] ?? 0,
-  };
-}
-
-// Label data first, OFF's estimate as fallback; null when neither has a kcal value.
-function pickNutriments(product: Product): Nutriments | null {
-  for (const nutriments of [product.nutriments, product.nutriments_estimated]) {
-    if (typeof nutriments?.['energy-kcal_100g'] === 'number') return nutriments;
-  }
-  return null;
 }
