@@ -79,18 +79,40 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
 
         @switch (phase()) {
           @case ('capture') {
-            <input
-              id="ct-photo-file"
-              class="sr-only"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              (change)="onFilePicked($event)"
-            />
-            <label class="btn btn-secondary picker" for="ct-photo-file">
-              <ct-icon name="sparkles" [size]="18" />
-              {{ previewUrl() ? i18n.t('photo.retake') : i18n.t('photo.choose') }}
-            </label>
+            <!-- Two inputs rather than one: the capture attribute is a request for the
+                 camera, and a browser that honours it gives no way back to the gallery.
+                 The only reliable way to offer both is to expose both. Same handler —
+                 the picked file is read off the event target. -->
+            <div class="pickers">
+              <input
+                id="ct-photo-camera"
+                class="sr-only"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                (change)="onFilePicked($event)"
+              />
+              <label class="btn btn-secondary picker" for="ct-photo-camera">
+                <ct-icon name="camera" [size]="18" />
+                {{ i18n.t('photo.takePhoto') }}
+              </label>
+
+              <input
+                id="ct-photo-file"
+                class="sr-only"
+                type="file"
+                accept="image/*"
+                (change)="onFilePicked($event)"
+              />
+              <label class="btn btn-secondary picker" for="ct-photo-file">
+                <ct-icon name="image" [size]="18" />
+                {{ i18n.t('photo.fromGallery') }}
+              </label>
+            </div>
+
+            @if (previewUrl()) {
+              <p class="text-muted hint">{{ i18n.t('photo.retake') }}</p>
+            }
 
             <label class="field-label" for="ct-photo-note">{{ i18n.t('photo.noteLabel') }}</label>
             <input
@@ -366,13 +388,20 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
       border-color: var(--color-accent);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
     }
+    .pickers {
+      display: flex;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
     .picker {
       display: flex;
+      flex: 1;
       justify-content: center;
       gap: 8px;
-      width: 100%;
-      margin-bottom: var(--space-4);
       cursor: pointer;
+      /* Two buttons share one row, so the longer label wraps rather than overflowing. */
+      min-width: 0;
+      text-align: center;
     }
     .preview-img {
       display: block;

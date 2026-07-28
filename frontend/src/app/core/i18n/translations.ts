@@ -82,8 +82,9 @@ export const en = {
 
   // AI photo estimate
   'photo.title': 'Estimate from photo',
-  'photo.choose': 'Take or choose a photo',
-  'photo.retake': 'Use a different photo',
+  'photo.takePhoto': 'Take photo',
+  'photo.fromGallery': 'From gallery',
+  'photo.retake': 'Pick again to use a different photo.',
   'photo.noteLabel': 'Anything the photo does not show?',
   'photo.notePlaceholder': 'e.g. fried in 2 tbsp of oil',
   'photo.noteHint': 'Cooking method and hidden oils matter most — the estimate trusts your note over the photo.',
@@ -254,8 +255,9 @@ export const bg: Record<TranslationKey, string> = {
 
   // AI photo estimate
   'photo.title': 'Оценка по снимка',
-  'photo.choose': 'Снимай или избери снимка',
-  'photo.retake': 'Използвай друга снимка',
+  'photo.takePhoto': 'Снимай',
+  'photo.fromGallery': 'От галерията',
+  'photo.retake': 'Избери отново, за да смениш снимката.',
   'photo.noteLabel': 'Нещо, което снимката не показва?',
   'photo.notePlaceholder': 'напр. пържено в 2 с.л. олио',
   'photo.noteHint': 'Начинът на приготвяне и скритите мазнини са най-важни — оценката се доверява на бележката ти повече, отколкото на снимката.',
