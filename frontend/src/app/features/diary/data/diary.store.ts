@@ -129,6 +129,36 @@ export class DiaryStore {
     });
   }
 
+  // Log several foods at once — a photo estimate returns a whole meal's ingredients.
+  // Same optimistic contract as addEntry, but the batch succeeds or rolls back together,
+  // since the API writes it in one request.
+  addEntries(entries: readonly Omit<LogEntry, 'id'>[]): void {
+    const [first] = entries;
+    if (!first) return;
+
+    const date = this.currentDate();
+    const staged = entries.map((entry) => ({ ...entry, id: `temp-${crypto.randomUUID()}` }));
+    const tempIds = new Set(staged.map((entry) => entry.id));
+    this.mutateDate(date, (existing) => [...existing, ...staged]);
+
+    // The API batches under a single date + meal, and the overlay logs into one meal.
+    const items = staged.map(({ id, mealType, ...item }) => item);
+    this.api.addEntries(date, first.mealType, items).subscribe({
+      next: (created) =>
+        this.mutateDate(date, (existing) => {
+          // Swap each staged row for its server row in place, so the day keeps its order.
+          const incoming = [...created];
+          return existing.flatMap((entry) => {
+            if (!tempIds.has(entry.id)) return [entry];
+            const server = incoming.shift();
+            return server ? [server] : [];
+          });
+        }),
+      error: () =>
+        this.mutateDate(date, (existing) => existing.filter((entry) => !tempIds.has(entry.id))),
+    });
+  }
+
   updateEntryGrams(id: string, grams: number): void {
     const date = this.currentDate();
     const previous = this.entries().find((entry) => entry.id === id);

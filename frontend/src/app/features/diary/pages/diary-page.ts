@@ -105,7 +105,12 @@ import { MEAL_LABEL_KEYS, type LogEntry, type MealType } from '../models/diary.m
     }
 
     @if (store.addFood(); as meal) {
-      <ct-add-food-overlay [meal]="meal" (close)="store.closeAddFood()" (log)="logFood($event)" />
+      <ct-add-food-overlay
+        [meal]="meal"
+        (close)="store.closeAddFood()"
+        (log)="logFood($event)"
+        (logMany)="logFoods($event)"
+      />
     }
   `,
   styles: `
@@ -198,6 +203,12 @@ export class DiaryPage {
 
   protected logFood(entry: Omit<LogEntry, 'id'>): void {
     this.store.addEntry(entry);
+    this.store.closeAddFood();
+  }
+
+  /** A photo estimate confirmed — several ingredients logged in one batch. */
+  protected logFoods(entries: Omit<LogEntry, 'id'>[]): void {
+    this.store.addEntries(entries);
     this.store.closeAddFood();
   }
 }

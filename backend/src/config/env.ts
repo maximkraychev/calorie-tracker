@@ -11,9 +11,31 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(32),
   ACCESS_TOKEN_TTL_MIN: z.coerce.number().int().positive().default(15),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+
+  // AI photo estimation. 'stub' returns a fixed result with no network calls, so the
+  // whole flow is buildable and testable without a key or a per-call cost.
+  PHOTO_AI_PROVIDER: z.enum(['stub', 'gemini']).default('stub'),
+  GEMINI_API_KEY: z.string().min(1).optional(),
+  // Google renames these often (gemini-3-flash-preview, gemini-3.1-flash-lite, ...).
+  // List the current ids: GET https://generativelanguage.googleapis.com/v1beta/models
+  GEMINI_MODEL: z.string().min(1).default('gemini-3-flash-preview'),
+  // USDA FoodData Central — free key, 1000 req/hour: https://fdc.nal.usda.gov/api-key-signup
+  FDC_API_KEY: z.string().min(1).optional(),
 });
 
-const parsed = envSchema.safeParse(process.env);
+const parsed = envSchema
+  // Fail at boot rather than at the first photo upload: a missing key here is a
+  // deployment mistake, and it is much cheaper to find on startup.
+  .superRefine((value, ctx) => {
+    if (value.PHOTO_AI_PROVIDER === 'gemini' && !value.GEMINI_API_KEY) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['GEMINI_API_KEY'],
+        message: 'Required when PHOTO_AI_PROVIDER=gemini',
+      });
+    }
+  })
+  .safeParse(process.env);
 
 if (!parsed.success) {
   console.error('Invalid environment variables:', z.treeifyError(parsed.error));

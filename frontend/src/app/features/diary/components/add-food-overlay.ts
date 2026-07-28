@@ -27,6 +27,7 @@ import {
 } from '../models/diary.models';
 import type { FoodSearchResult } from '../models/food-search.models';
 import { BarcodeScannerOverlay } from './barcode-scanner-overlay';
+import { PhotoEstimateOverlay } from './photo-estimate-overlay';
 
 // Open Food Facts asks clients not to hammer their search (rate-limited per IP), so
 // queries only fire after a typing pause, never for under 3 characters, and repeats
@@ -55,7 +56,7 @@ const MODES: readonly AddFoodMode[] = [
   { key: 'scan', icon: 'scan', labelKey: 'addFood.modeScan', enabled: true },
   { key: 'myfoods', icon: 'apple', labelKey: 'nav.myFoods', enabled: false },
   { key: 'recipes', icon: 'book', labelKey: 'nav.recipes', enabled: false },
-  { key: 'photo', icon: 'sparkles', labelKey: 'addFood.modePhoto', enabled: false },
+  { key: 'photo', icon: 'sparkles', labelKey: 'addFood.modePhoto', enabled: true },
   { key: 'manual', icon: 'keyboard', labelKey: 'addFood.modeManual', enabled: false },
 ];
 
@@ -64,7 +65,7 @@ const MODES: readonly AddFoodMode[] = [
 // preview). Presentational like the other diary overlays — logging is emitted up.
 @Component({
   selector: 'ct-add-food-overlay',
-  imports: [Icon, BarcodeScannerOverlay],
+  imports: [Icon, BarcodeScannerOverlay, PhotoEstimateOverlay],
   template: `
     <div class="overlay">
       <header class="head">
@@ -224,6 +225,14 @@ const MODES: readonly AddFoodMode[] = [
 
       @if (scannerOpen()) {
         <ct-barcode-scanner-overlay (found)="onScanFound($event)" (close)="closeScanner()" />
+      }
+
+      @if (photoOpen()) {
+        <ct-photo-estimate-overlay
+          [meal]="meal()"
+          (log)="logMany.emit($event)"
+          (close)="closePhoto()"
+        />
       }
     </div>
   `,
@@ -444,6 +453,8 @@ export class AddFoodOverlay {
 
   readonly close = output<void>();
   readonly log = output<Omit<LogEntry, 'id'>>();
+  /** A whole meal at once — the photo estimate resolves several ingredients per photo. */
+  readonly logMany = output<Omit<LogEntry, 'id'>[]>();
 
   private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
@@ -453,6 +464,7 @@ export class AddFoodOverlay {
   protected readonly grams = signal(100);
   protected readonly targetMeal = linkedSignal(() => this.meal());
   protected readonly scannerOpen = signal(false);
+  protected readonly photoOpen = signal(false);
 
   // How the current `selected` food was picked — logged as the entry's source so a barcode
   // scan is distinguishable from a text-search pick.
@@ -525,10 +537,15 @@ export class AddFoodOverlay {
 
   protected onModeClick(mode: AddFoodMode): void {
     if (mode.key === 'scan') this.scannerOpen.set(true);
+    else if (mode.key === 'photo') this.photoOpen.set(true);
   }
 
   protected closeScanner(): void {
     this.scannerOpen.set(false);
+  }
+
+  protected closePhoto(): void {
+    this.photoOpen.set(false);
   }
 
   // A scanned barcode resolved to an OFF product: close the camera and drop straight into
