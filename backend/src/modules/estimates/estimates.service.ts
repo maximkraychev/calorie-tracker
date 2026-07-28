@@ -89,7 +89,10 @@ async function resolveItem(item: VisionItem, index: number): Promise<EstimateIte
 
   let matches: FdcMatch[] = [];
   try {
-    matches = await searchFdc(item.searchTerm);
+    // The model's own energy guess is passed in as a plausibility check, not as data:
+    // it lets the ranker demote a candidate that is nutritionally nothing like the food
+    // requested (tomato at 18 kcal vs "Tomato powder" at 302).
+    matches = await searchFdc(item.searchTerm, { expectedKcal: item.fallbackPer100g.kcal });
   } catch (err) {
     // Rate limits and outages land here. Loud, because a silent fallback would quietly
     // fill the diary with unverified model guesses.

@@ -1,7 +1,7 @@
 import { env } from '../../config/env.js';
 import { AppError } from '../../utils/app-error.js';
 import { logger } from '../../utils/logger.js';
-import { buildPrompt, PROMPT_VERSION, RESPONSE_SCHEMA } from './prompt.v1.js';
+import { buildPrompt, PROMPT_VERSION, RESPONSE_SCHEMA } from './prompt.v2.js';
 import type {
   Confidence,
   EstimateInput,
@@ -128,7 +128,7 @@ async function callGemini(prompt: string, input: EstimateInput): Promise<string>
     }
 
     const payload = (await response.json()) as GeminiResponse;
-    console.log('Gemini response payload:', JSON.stringify(payload, null, 2));
+    
     const text = payload.candidates?.[0]?.content?.parts
       ?.map((part) => part.text ?? '')
       .join('')
@@ -158,7 +158,7 @@ async function callGemini(prompt: string, input: EstimateInput): Promise<string>
 /**
  * `generationConfig.responseSchema` takes the OpenAPI-flavoured subset — `type` values
  * are upper-case and unknown keywords are rejected. Translating here keeps
- * `prompt.v1.ts` provider-neutral so the next adapter can feed it plain JSON Schema.
+ * `prompt.v2.ts` provider-neutral so the next adapter can feed it plain JSON Schema.
  */
 function toGeminiSchema(schema: unknown): unknown {
   if (Array.isArray(schema)) return schema.map(toGeminiSchema);

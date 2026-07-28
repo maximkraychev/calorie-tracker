@@ -1,11 +1,12 @@
-import { PROMPT_VERSION } from './prompt.v1.js';
+import { PROMPT_VERSION } from './prompt.v2.js';
 import type { EstimateInput, PhotoEstimateProvider, VisionResult } from './types.js';
 
 // Fixed result, no network. Lets the whole path — multipart upload, FDC resolution,
 // the editable review list, the diary save — be built and driven end to end without an
 // API key or a per-call cost. Default provider (PHOTO_AI_PROVIDER=stub).
 //
-// The search terms are real so FDC resolution genuinely exercises itself against them.
+// The search terms are real, and written in the comma-qualified form prompt v2 asks for,
+// so FDC resolution and its ranking genuinely exercise themselves against them.
 export const stubProvider: PhotoEstimateProvider = {
   name: 'stub',
   promptVersion: PROMPT_VERSION,
@@ -16,7 +17,7 @@ export const stubProvider: PhotoEstimateProvider = {
       items: [
         {
           displayName: bg ? 'Пилешко филе на скара' : 'Grilled chicken breast',
-          searchTerm: 'chicken breast',
+          searchTerm: 'chicken breast, meat only, cooked, roasted',
           grams: 150,
           confidence: 'high',
           cookingMethod: 'grilled',
@@ -24,7 +25,7 @@ export const stubProvider: PhotoEstimateProvider = {
         },
         {
           displayName: bg ? 'Бял ориз, варен' : 'White rice, cooked',
-          searchTerm: 'white rice cooked',
+          searchTerm: 'rice, white, long-grain, regular, cooked',
           grams: 180,
           confidence: 'medium',
           cookingMethod: 'boiled',
@@ -32,10 +33,10 @@ export const stubProvider: PhotoEstimateProvider = {
         },
         {
           displayName: bg ? 'Слънчогледово олио' : 'Sunflower oil',
-          searchTerm: 'sunflower oil',
+          searchTerm: 'oil, sunflower, linoleic',
           grams: 7,
           confidence: 'low',
-          cookingMethod: null,
+          cookingMethod: 'raw',
           fallbackPer100g: { kcal: 884, protein: 0, carbs: 0, fat: 100 },
         },
       ],
