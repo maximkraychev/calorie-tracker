@@ -15,6 +15,13 @@
       "when": 1783765351258,
       "tag": "0001_views_triggers_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785762552598,
+      "tag": "0002_generic_foods",
+      "breakpoints": true
     }
   ]
 }

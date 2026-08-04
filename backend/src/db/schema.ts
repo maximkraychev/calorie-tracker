@@ -4,6 +4,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -21,8 +22,13 @@ import {
 export const mealType = pgEnum('meal_type', ['breakfast', 'lunch', 'dinner', 'snack']);
 
 // Provenance of a nutrition snapshot. 'search' | 'barcode' = Open Food Facts,
+// 'generic' = a whole food from our own `generic_foods` catalog (USDA-seeded),
 // 'ai' = photo estimate, 'recipe' = logged from a recipe, 'custom' = user's
 // custom food, 'manual' = typed in by hand.
+//
+// 'generic' is distinct from 'search' because both write to `external_id` and
+// would otherwise be indistinguishable: an OFF barcode and a USDA fdcId are
+// different namespaces pointing at different databases.
 export const foodSource = pgEnum('food_source', [
   'search',
   'barcode',
@@ -30,6 +36,7 @@ export const foodSource = pgEnum('food_source', [
   'recipe',
   'custom',
   'manual',
+  'generic',
 ]);
 
 export const recipeNutritionMode = pgEnum('recipe_nutrition_mode', ['ingredients', 'manual']);
@@ -138,6 +145,68 @@ export const customFoods = pgTable(
       sql`${t.servingSizeG} IS NULL OR ${t.servingSizeG} > 0`,
     ),
     ...per100gChecks('custom_foods', t),
+  ],
+).enableRLS();
+
+// ---------------------------------------------------------------------------
+// generic_foods — the system whole-food catalog (bananas, olive oil, chicken
+// breast), seeded from USDA FoodData Central bulk downloads by
+// `scripts/import-generic-foods.ts`.
+//
+// Deliberately NOT rows in custom_foods: that table is user-owned (user_id NOT
+// NULL, deleted with the account, editable by its owner). These are read-only
+// system data with a completely different lifecycle — re-imported wholesale when
+// USDA publishes a new release.
+//
+// Fills the gap Open Food Facts leaves: OFF is a barcode database, so it covers
+// packaged products well and whole foods barely at all. Search combines the two.
+// ---------------------------------------------------------------------------
+
+/** One household measure for a generic food, e.g. `{ label: '1 medium', grams: 118 }`. */
+export interface GenericFoodPortion {
+  label: string;
+  grams: number;
+}
+
+export const genericFoods = pgTable(
+  'generic_foods',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // Which upstream catalog this row came from. Only 'usda' today; the column
+    // exists so a second source can be added without a migration.
+    source: text('source').notNull().default('usda'),
+    // The upstream identifier — an FDC fdcId, stored as text so other sources
+    // with non-numeric ids fit the same column.
+    externalId: text('external_id').notNull(),
+    name: text('name').notNull(),
+    // Filled progressively; English-only rows are still fully usable.
+    nameBg: text('name_bg'),
+    // Lowercased haystack: name + name_bg + synonyms, joined. Search matches
+    // against THIS, never `name` — one index then serves EN, BG and synonyms,
+    // and a Bulgarian name can be backfilled with an UPDATE, not a migration.
+    searchText: text('search_text').notNull(),
+    category: text('category'),
+    ...per100g,
+    servingSizeG: numeric('serving_size_g', { precision: 7, scale: 2 }),
+    // Household measures for the grams input, e.g. "1 medium" → 118 g.
+    portions: jsonb('portions').$type<GenericFoodPortion[]>(),
+    // Search boost. Seeded with a small data-driven value (see the importer) so
+    // "Bananas, raw" outranks "Bananas, dehydrated"; also hand-tunable later
+    // without touching the importer.
+    rank: integer('rank').notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [
+    // Makes re-importing a new USDA release an upsert rather than a duplicate.
+    uniqueIndex('generic_foods_source_external_id_idx').on(t.source, t.externalId),
+    index('generic_foods_search_text_trgm_idx').using('gin', t.searchText.op('gin_trgm_ops')),
+    check('generic_foods_name_not_blank', sql`length(trim(${t.name})) > 0`),
+    check('generic_foods_search_text_not_blank', sql`length(trim(${t.searchText})) > 0`),
+    check(
+      'generic_foods_serving_size_positive',
+      sql`${t.servingSizeG} IS NULL OR ${t.servingSizeG} > 0`,
+    ),
+    ...per100gChecks('generic_foods', t),
   ],
 ).enableRLS();
 

@@ -28,6 +28,9 @@ export function toResult(product: Product): FoodSearchResult | null {
     code: product.code,
     name,
     brand: product.brands?.split(',')[0]?.trim() || null,
+    // OFF has no Bulgarian catalog of its own; `lc` already localizes `product_name`,
+    // so there is no second name to carry.
+    source: 'search',
     kcalPer100g: nutriments['energy-kcal_100g']!,
     proteinPer100g: nutriments['proteins_100g'] ?? 0,
     carbsPer100g: nutriments['carbohydrates_100g'] ?? 0,

@@ -1,6 +1,21 @@
 import { env } from '../config/env.js';
 import { AppError } from '../utils/app-error.js';
 import { logger } from '../utils/logger.js';
+import {
+  NUTRIENTS,
+  inRange,
+  readEnergy,
+  readMacro,
+  round2,
+  type FdcNutrient,
+} from './fdc-nutrients.js';
+import {
+  PROCESSED_MARKERS,
+  VARIANT_MARKERS,
+  hasBrandToken,
+  normalizeTerm,
+  tokenize,
+} from './fdc-text.js';
 import type { Per100g } from './photo-estimate/types.js';
 
 // USDA FoodData Central — the source of truth for macros. Public domain, no attribution
@@ -36,97 +51,9 @@ const CANDIDATE_POOL = 25;
 const RESULT_LIMIT = 6;
 const REQUEST_TIMEOUT_MS = 10_000;
 
-// Nutrients are identified by both a legacy number and a modern id; entries in the wild
-// carry one or the other, so match on either.
-const NUTRIENTS = {
-  protein: { numbers: ['203'], ids: [1003] },
-  fat: { numbers: ['204'], ids: [1004] },
-  carbs: { numbers: ['205'], ids: [1005] },
-} as const;
-
-// Energy is the one nutrient FDC reports inconsistently across data types, and getting
-// this wrong is silent: a food with no readable energy is dropped entirely, which
-// quietly reduced the whole result set to SR Legacy and handed generic queries to
-// whatever processed derivative SR Legacy ranked first.
-//
-// Tried in order:
-//   208 — "Energy", what SR Legacy publishes.
-//   957 — "Energy (Atwater General Factors)", what Foundation publishes instead. Same
-//         basis as 208, so the two data types stay comparable in one ranking.
-//   958 — "Energy (Atwater Specific Factors)", per-food factors. Present on most
-//         Foundation entries alongside 957; a few carry only this one.
-//   268 — kilojoules, converted. Last resort.
-const ENERGY_SOURCES = [
-  { numbers: ['208'], ids: [1008] },
-  { numbers: ['957'], ids: [2047] },
-  { numbers: ['958'], ids: [2048] },
-] as const;
-
-const ENERGY_KJ = { numbers: ['268'], ids: [1062] } as const;
-const KJ_PER_KCAL = 4.184;
-
-// Words that mark a processed derivative rather than the food itself. Penalised only
-// when the query did NOT ask for them, so "sun dried tomato" or "canned tuna" still
-// resolve normally — this demotes the powder when you asked for a tomato, nothing more.
-const PROCESSED_MARKERS = new Set([
-  'powder',
-  'powdered',
-  'substitute',
-  'imitation',
-  'canned',
-  'dried',
-  'dehydrated',
-  'concentrate',
-  'concentrated',
-  'condensed',
-  'breaded',
-  'battered',
-  'sauce',
-  'juice',
-  'paste',
-  'puree',
-  'pickle',
-  'pickled',
-  'stick',
-  'nugget',
-  'patty',
-  'roll',
-  'lunchmeat',
-  'luncheon',
-  'sweetened',
-  'candied',
-  'infant',
-  'formula',
-  'baby',
-  'snack',
-  'dessert',
-  'mix',
-  'supplement',
-]);
-
-// Nutritionally modified versions of a food. Same rule as above — only penalised when
-// unasked-for — but a milder one, because these are still the food itself. Without this,
-// "mozzarella cheese" resolves to "Cheese, mozzarella, nonfat" (141 kcal) purely because
-// it carries one fewer qualifier than "Cheese, mozzarella, whole milk" (299 kcal).
-const VARIANT_MARKERS = new Set([
-  'nonfat',
-  'lowfat',
-  'skim',
-  'skimmed',
-  'low',
-  'reduced',
-  'light',
-  'lite',
-  'free',
-  'diet',
-  'unsweetened',
-  'enriched',
-  'fortified',
-]);
-
-// Connectives carry no meaning but distort both the extra-word count and the position
-// bonus. "with" and "without" are deliberately kept: they invert meaning.
-const STOPWORDS = new Set(['and', 'or', 'the', 'of', 'in']);
+// The nutrient constants, energy priority, marker word lists and tokenizer live in
+// `fdc-nutrients.ts` / `fdc-text.ts` — shared with the offline importer that seeds
+// `generic_foods`, so search and seed agree on what a whole food is.
 
 // Any candidate whose energy is this many times away from the vision model's own guess
 // is almost certainly a different food. 3x is deliberately loose — raw vs cooked moves
@@ -157,17 +84,6 @@ export interface SearchOptions {
    * exactOptionalPropertyTypes.
    */
   expectedKcal?: number | undefined;
-}
-
-interface FdcNutrient {
-  nutrientId?: number;
-  nutrientNumber?: string;
-  unitName?: string;
-  value?: number;
-  // The /food/{id} detail endpoint nests these; /foods/search flattens them. Handled
-  // for safety in case a future call site uses the detail shape.
-  nutrient?: { id?: number; number?: string; unitName?: string };
-  amount?: number;
 }
 
 interface FdcFood {
@@ -363,98 +279,4 @@ function scoreCandidate(
 
   // Ties fall back to FDC's own ordering.
   return score - candidate.rank * 0.01;
-}
-
-function readEnergy(nutrients: FdcNutrient[]): number | null {
-  for (const source of ENERGY_SOURCES) {
-    const kcal = readNutrient(nutrients, source);
-    if (kcal !== null) return kcal;
-  }
-
-  const kj = readNutrient(nutrients, ENERGY_KJ);
-  return kj === null ? null : round2(kj / KJ_PER_KCAL);
-}
-
-/**
- * Read a macro, floored at zero. FDC derives carbohydrate "by difference", so a food
- * that is almost entirely protein, fat and water can land slightly below zero — raw
- * chicken breast reports -0.43 g. That is a rounding artefact, not corrupt data, and
- * rejecting the whole food over it (which `inRange` would) loses a good match.
- */
-function readMacro(
-  nutrients: FdcNutrient[],
-  spec: { numbers: readonly string[]; ids: readonly number[] },
-): number {
-  return Math.max(0, readNutrient(nutrients, spec) ?? 0);
-}
-
-function readNutrient(
-  nutrients: FdcNutrient[],
-  spec: { numbers: readonly string[]; ids: readonly number[] },
-): number | null {
-  for (const entry of nutrients) {
-    const number = entry.nutrientNumber ?? entry.nutrient?.number;
-    const id = entry.nutrientId ?? entry.nutrient?.id;
-    const matches =
-      (number !== undefined && spec.numbers.includes(number)) ||
-      (id !== undefined && spec.ids.includes(id));
-    if (!matches) continue;
-
-    const value = entry.value ?? entry.amount;
-    if (typeof value === 'number' && Number.isFinite(value)) return round2(value);
-  }
-  return null;
-}
-
-function inRange({ kcal, protein, carbs, fat }: Per100g): boolean {
-  return (
-    kcal >= 0 && kcal <= 900 && [protein, carbs, fat].every((macro) => macro >= 0 && macro <= 100)
-  );
-}
-
-/**
- * FDC matches on plain text, so trim the query down to the words that carry meaning.
- * Deliberately simple — an over-clever normaliser does more damage than the punctuation
- * it removes.
- */
-function normalizeTerm(term: string): string {
-  return term
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-/**
- * Split text into comparable words. Plurals are folded because FDC is inconsistent about
- * them ("Tomato, roma" and "Tomatoes, red, ripe, raw" are both in the same result set),
- * and one-letter fragments are dropped so possessives like "DENNY'S" do not leave a
- * stray "s" behind.
- */
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((token) => token.length > 1)
-    .map(singularize)
-    .filter((token) => !STOPWORDS.has(token));
-}
-
-function singularize(token: string): string {
-  // "glass" and "grass" are not plurals; neither is anything this short.
-  if (token.length <= 3 || !token.endsWith('s') || token.endsWith('ss')) return token;
-  if (token.endsWith('ies')) return `${token.slice(0, -3)}y`;
-  // The "-es" plurals: tomatoes, glasses, dishes, batches, boxes.
-  if (/(oes|sses|shes|ches|xes|zes)$/.test(token)) return token.slice(0, -2);
-  // Everything else drops the "s" only, so "juices" folds to "juice" and not "juic".
-  return token.slice(0, -1);
-}
-
-/** FDC writes brand and restaurant names in caps: "DENNY'S", "KENTUCKY FRIED CHICKEN". */
-function hasBrandToken(description: string): boolean {
-  return /\b[A-Z]{3,}\b/.test(description);
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
 }

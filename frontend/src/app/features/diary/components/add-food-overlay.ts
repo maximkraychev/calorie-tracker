@@ -11,13 +11,23 @@ import {
   type ElementRef,
 } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, debounceTime, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
+import {
+  catchError,
+  combineLatest,
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 
 import { I18n } from '../../../core/i18n/i18n';
 import type { TranslationKey } from '../../../core/i18n/translations';
 import { macrosOf, round, round1 } from '../../../shared/utils/nutrition.utils';
 import { Icon, type IconName } from '../../../shared/ui/icon';
 import { FoodSearchApi } from '../data/food-search.api';
+import { GenericFoodsApi } from '../data/generic-foods.api';
 import {
   MEAL_LABEL_KEYS,
   MEAL_ORDER,
@@ -25,7 +35,7 @@ import {
   type LogEntry,
   type MealType,
 } from '../models/diary.models';
-import type { FoodSearchResult } from '../models/food-search.models';
+import { displayName, type FoodSearchResult } from '../models/food-search.models';
 import { BarcodeScannerOverlay } from './barcode-scanner-overlay';
 import { PhotoEstimateOverlay } from './photo-estimate-overlay';
 
@@ -212,7 +222,7 @@ const MODES: readonly AddFoodMode[] = [
               @for (result of results(); track result.code) {
                 <button class="result" type="button" (click)="pick(result)">
                   <span class="result-text">
-                    <span class="result-name">{{ result.name }}</span>
+                    <span class="result-name">{{ resultName(result) }}</span>
                     <span class="text-muted result-meta">{{ resultMeta(result) }}</span>
                   </span>
                   <ct-icon class="result-chevron" name="chevron-right" [size]="18" />
@@ -255,7 +265,9 @@ const MODES: readonly AddFoodMode[] = [
       height: 52px;
       border-bottom: 2px solid var(--color-divider);
     }
-    .head .btn-icon { border: 1px solid var(--color-divider); }
+    .head .btn-icon {
+      border: 1px solid var(--color-divider);
+    }
     .title {
       font-family: var(--font-heading);
       font-weight: 800;
@@ -292,9 +304,16 @@ const MODES: readonly AddFoodMode[] = [
       color: var(--color-bg);
       border-color: var(--color-accent);
     }
-    .chip:disabled { opacity: 0.45; cursor: default; }
+    .chip:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
 
-    .body { flex: 1; overflow-y: auto; padding: var(--space-4); }
+    .body {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-4);
+    }
 
     .searchbox {
       display: flex;
@@ -305,7 +324,9 @@ const MODES: readonly AddFoodMode[] = [
       padding: 0 10px;
       border-radius: 12px;
       margin-bottom: var(--space-4);
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
     }
     /* The field is borderless inside the box, so the focus ring belongs on the box
        (wrapping icon + input), not the inner input. */
@@ -313,7 +334,9 @@ const MODES: readonly AddFoodMode[] = [
       border-color: var(--color-accent);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 22%, transparent);
     }
-    .search-icon { opacity: 0.5; }
+    .search-icon {
+      opacity: 0.5;
+    }
     .query {
       flex: 1;
       border: 0;
@@ -327,7 +350,10 @@ const MODES: readonly AddFoodMode[] = [
       box-shadow: none;
     }
 
-    .note { font-size: 13px; padding: var(--space-4) 0; }
+    .note {
+      font-size: 13px;
+      padding: var(--space-4) 0;
+    }
     .spinner {
       width: 44px;
       height: 44px;
@@ -337,7 +363,11 @@ const MODES: readonly AddFoodMode[] = [
       margin: var(--space-6) auto;
       animation: ct-af-spin 0.8s linear infinite;
     }
-    @keyframes ct-af-spin { to { transform: rotate(360deg); } }
+    @keyframes ct-af-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
 
     .result {
       display: flex;
@@ -353,13 +383,32 @@ const MODES: readonly AddFoodMode[] = [
       color: inherit;
       font: inherit;
     }
-    .result-text { flex: 1; min-width: 0; }
-    .result-name { display: block; font-weight: 600; font-size: 15px; }
-    .result-meta { display: block; font-size: 12px; }
-    .result-chevron { opacity: 0.4; }
+    .result-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .result-name {
+      display: block;
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .result-meta {
+      display: block;
+      font-size: 12px;
+    }
+    .result-chevron {
+      opacity: 0.4;
+    }
 
-    .sel-name { font-family: var(--font-heading); font-weight: 800; font-size: 22px; }
-    .sel-meta { font-size: 13px; margin-bottom: var(--space-6); }
+    .sel-name {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 22px;
+    }
+    .sel-meta {
+      font-size: 13px;
+      margin-bottom: var(--space-6);
+    }
 
     .field-label {
       display: block;
@@ -387,7 +436,10 @@ const MODES: readonly AddFoodMode[] = [
       background: var(--color-bg);
       color: var(--color-text);
     }
-    .seg.active { background: var(--color-accent); color: var(--color-bg); }
+    .seg.active {
+      background: var(--color-accent);
+      color: var(--color-bg);
+    }
 
     .stepper {
       display: flex;
@@ -395,7 +447,9 @@ const MODES: readonly AddFoodMode[] = [
       gap: var(--space-2);
       margin-bottom: var(--space-6);
     }
-    .step { width: 48px; }
+    .step {
+      width: 48px;
+    }
     .grams {
       text-align: center;
       font-family: var(--font-heading);
@@ -411,8 +465,17 @@ const MODES: readonly AddFoodMode[] = [
       padding: var(--space-4);
       margin-bottom: var(--space-4);
     }
-    .preview-top { display: flex; align-items: baseline; gap: var(--space-2); }
-    .preview-kcal { font-family: var(--font-heading); font-weight: 800; font-size: 38px; line-height: 1; }
+    .preview-top {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+    }
+    .preview-kcal {
+      font-family: var(--font-heading);
+      font-weight: 800;
+      font-size: 38px;
+      line-height: 1;
+    }
     .preview-label {
       font-size: 12px;
       letter-spacing: 0.08em;
@@ -435,12 +498,17 @@ const MODES: readonly AddFoodMode[] = [
       padding: var(--space-3) var(--space-4);
       border-top: 2px solid var(--color-divider);
     }
-    .confirm { width: 100%; justify-content: center; padding: var(--space-3); }
+    .confirm {
+      width: 100%;
+      justify-content: center;
+      padding: var(--space-3);
+    }
   `,
 })
 export class AddFoodOverlay {
   protected readonly i18n = inject(I18n);
   private readonly api = inject(FoodSearchApi);
+  private readonly genericApi = inject(GenericFoodsApi);
   protected readonly round = round;
   protected readonly round1 = round1;
   protected readonly modes = MODES;
@@ -485,20 +553,25 @@ export class AddFoodOverlay {
   protected readonly search = toSignal(
     toObservable(this.searchKey).pipe(
       debounceTime(DEBOUNCE_MS),
-      distinctUntilChanged(
-        (a, b) => a.query === b.query && a.lang === b.lang && a.tick === b.tick,
-      ),
+      distinctUntilChanged((a, b) => a.query === b.query && a.lang === b.lang && a.tick === b.tick),
       switchMap(({ query, lang }) => {
         if (query.length < MIN_QUERY_LENGTH) return of<SearchState>({ status: 'idle' });
         const cacheKey = `${lang}:${query.toLowerCase()}`;
         const cached = this.cache.get(cacheKey);
         if (cached) return of(toState(cached));
-        return this.api.search(query, lang).pipe(
-          map((results) => {
+        // Both catalogs in parallel, and neither is allowed to sink the other: Open
+        // Food Facts is a third party that rate-limits and 503s, and our own endpoint
+        // sits on a free instance that cold-starts. A failed source contributes an
+        // empty list, so the surviving one still renders.
+        return combineLatest([
+          this.genericApi.search(query).pipe(catchError(() => of<FoodSearchResult[]>([]))),
+          this.api.search(query, lang).pipe(catchError(() => of<FoodSearchResult[]>([]))),
+        ]).pipe(
+          map(([generic, off]) => {
+            const results = mergeResults(generic, off, query);
             this.cache.set(cacheKey, results);
             return toState(results);
           }),
-          catchError(() => of<SearchState>({ status: 'error' })),
           startWith<SearchState>({ status: 'loading' }),
         );
       }),
@@ -520,6 +593,11 @@ export class AddFoodOverlay {
 
   constructor() {
     afterNextRender(() => this.searchInput()?.nativeElement.focus());
+  }
+
+  /** The result's name in the active language — generic foods carry a Bulgarian one. */
+  protected resultName(result: FoodSearchResult): string {
+    return displayName(result, this.i18n.lang());
   }
 
   protected resultMeta(result: FoodSearchResult): string {
@@ -597,4 +675,38 @@ export class AddFoodOverlay {
 
 function toState(results: FoodSearchResult[]): SearchState {
   return results.length > 0 ? { status: 'results', results } : { status: 'empty' };
+}
+
+// A token only a packaged product would carry: a digit ("coca cola 330") or a unit of
+// packaging. Their presence says the user wants a specific product, not an ingredient.
+//
+// The word boundaries are load-bearing. Without them the single-letter alternatives
+// match inside ordinary words — "l" hits app(l)e, mi(l)k and sa(l)t — so every fruit
+// query would be misread as a brand search and answered by Open Food Facts first.
+const BRAND_HINT = /\d|\b(ml|l|g|kg|oz|pack|bar|bio|zero|light|max)\b/i;
+
+/**
+ * Interleave the two catalogs.
+ *
+ * The query itself says which one the user meant. "banana" or "chicken breast" is an
+ * ingredient — the whole-food catalog answers it well and OFF answers it with
+ * banana-flavoured cereal bars. Anything longer, or carrying a digit or a packaging
+ * word, is someone looking for a product on a shelf, and OFF is the better first answer.
+ *
+ * The loser is appended rather than dropped: both lists stay reachable by scrolling, so
+ * a wrong guess costs the user a scroll instead of a re-query.
+ */
+function mergeResults(
+  generic: FoodSearchResult[],
+  off: FoodSearchResult[],
+  query: string,
+): FoodSearchResult[] {
+  const words = query.trim().split(/\s+/).filter(Boolean);
+  const wholeFoodQuery = words.length <= 2 && !BRAND_HINT.test(query);
+
+  const ordered = wholeFoodQuery ? [...generic, ...off] : [...off, ...generic];
+
+  // `code` is namespaced per source, so this only removes a genuine repeat within one.
+  const seen = new Set<string>();
+  return ordered.filter((result) => !seen.has(result.code) && seen.add(result.code));
 }
