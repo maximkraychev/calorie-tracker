@@ -26,6 +26,8 @@ import { I18n } from '../../../core/i18n/i18n';
 import type { TranslationKey } from '../../../core/i18n/translations';
 import { macrosOf, round, round1 } from '../../../shared/utils/nutrition.utils';
 import { Icon, type IconName } from '../../../shared/ui/icon';
+import { FoodsStore } from '../../foods/data/foods.store';
+import { filterFoods, type CustomFood } from '../../foods/models/custom-food.models';
 import { FoodSearchApi } from '../data/food-search.api';
 import { GenericFoodsApi } from '../data/generic-foods.api';
 import {
@@ -52,8 +54,8 @@ type SearchState =
   | { status: 'empty' }
   | { status: 'error' };
 
-// The Add-Food method chips. Search and scan are live; the rest render disabled until
-// their flows are built.
+// The Add-Food method chips. Recipes and manual entry render disabled until their flows
+// are built.
 interface AddFoodMode {
   key: string;
   icon: IconName;
@@ -64,11 +66,15 @@ interface AddFoodMode {
 const MODES: readonly AddFoodMode[] = [
   { key: 'search', icon: 'search', labelKey: 'addFood.modeSearch', enabled: true },
   { key: 'scan', icon: 'scan', labelKey: 'addFood.modeScan', enabled: true },
-  { key: 'myfoods', icon: 'apple', labelKey: 'nav.myFoods', enabled: false },
+  { key: 'myfoods', icon: 'apple', labelKey: 'nav.myFoods', enabled: true },
   { key: 'recipes', icon: 'book', labelKey: 'nav.recipes', enabled: false },
   { key: 'photo', icon: 'sparkles', labelKey: 'addFood.modePhoto', enabled: true },
   { key: 'manual', icon: 'keyboard', labelKey: 'addFood.modeManual', enabled: false },
 ];
+
+// The two chips that swap the overlay's browse pane. Scan and photo open their own
+// overlays instead, so they are not modes in this sense.
+type BrowseMode = 'search' | 'myfoods';
 
 // Full-screen Add-Food overlay (z 55, above meal detail): method chips + debounced
 // Open Food Facts search, then a portion step (meal switcher, grams stepper, live
@@ -172,7 +178,7 @@ const MODES: readonly AddFoodMode[] = [
             <button
               class="chip"
               type="button"
-              [class.active]="mode.key === 'search'"
+              [class.active]="mode.key === browseMode()"
               [disabled]="!mode.enabled"
               [attr.title]="mode.enabled ? null : i18n.t('common.comingSoon')"
               (click)="onModeClick(mode)"
@@ -183,54 +189,108 @@ const MODES: readonly AddFoodMode[] = [
           }
         </div>
 
-        <div class="body">
-          <div class="searchbox">
-            <ct-icon class="search-icon" name="search" [size]="18" />
-            <input
-              #searchInput
-              class="input query"
-              type="text"
-              enterkeyhint="search"
-              [placeholder]="i18n.t('addFood.searchPlaceholder')"
-              [attr.aria-label]="i18n.t('addFood.searchPlaceholder')"
-              [value]="queryText()"
-              (input)="onQueryInput($event)"
-            />
-          </div>
+        @if (browseMode() === 'search') {
+          <div class="body">
+            <div class="searchbox">
+              <ct-icon class="search-icon" name="search" [size]="18" />
+              <input
+                #searchInput
+                class="input query"
+                type="text"
+                enterkeyhint="search"
+                [placeholder]="i18n.t('addFood.searchPlaceholder')"
+                [attr.aria-label]="i18n.t('addFood.searchPlaceholder')"
+                [value]="queryText()"
+                (input)="onQueryInput($event)"
+              />
+            </div>
 
-          @switch (search().status) {
-            @case ('idle') {
-              <div class="text-muted note">{{ i18n.t('addFood.minChars', { n: minQuery }) }}</div>
-            }
-            @case ('loading') {
-              <div
-                class="spinner"
-                role="status"
-                [attr.aria-label]="i18n.t('addFood.searching')"
-              ></div>
-            }
-            @case ('empty') {
-              <div class="text-muted note">{{ i18n.t('addFood.noMatches') }}</div>
-            }
-            @case ('error') {
-              <div class="text-muted note">{{ i18n.t('addFood.error') }}</div>
-              <button class="btn btn-secondary" type="button" (click)="retry()">
-                {{ i18n.t('addFood.retry') }}
-              </button>
-            }
-            @case ('results') {
-              @for (result of results(); track result.code) {
-                <button class="result" type="button" (click)="pick(result)">
-                  <span class="result-text">
-                    <span class="result-name">{{ resultName(result) }}</span>
-                    <span class="text-muted result-meta">{{ resultMeta(result) }}</span>
-                  </span>
-                  <ct-icon class="result-chevron" name="chevron-right" [size]="18" />
+            @switch (search().status) {
+              @case ('idle') {
+                <div class="text-muted note">
+                  {{ i18n.t('addFood.minChars', { n: minQuery }) }}
+                </div>
+              }
+              @case ('loading') {
+                <div
+                  class="spinner"
+                  role="status"
+                  [attr.aria-label]="i18n.t('addFood.searching')"
+                ></div>
+              }
+              @case ('empty') {
+                <div class="text-muted note">{{ i18n.t('addFood.noMatches') }}</div>
+              }
+              @case ('error') {
+                <div class="text-muted note">{{ i18n.t('addFood.error') }}</div>
+                <button class="btn btn-secondary" type="button" (click)="retry()">
+                  {{ i18n.t('addFood.retry') }}
                 </button>
               }
+              @case ('results') {
+                @for (result of results(); track result.code) {
+                  <button class="result" type="button" (click)="pick(result)">
+                    <span class="result-text">
+                      <span class="result-name">{{ resultName(result) }}</span>
+                      <span class="text-muted result-meta">{{ resultMeta(result) }}</span>
+                    </span>
+                    <ct-icon class="result-chevron" name="chevron-right" [size]="18" />
+                  </button>
+                }
+              }
             }
-          }
-        </div>
+          </div>
+        } @else {
+          <div class="body">
+            @switch (foods.status()) {
+              @case ('loading') {
+                <div
+                  class="spinner"
+                  role="status"
+                  [attr.aria-label]="i18n.t('myFoods.loading')"
+                ></div>
+              }
+              @case ('error') {
+                <div class="text-muted note">{{ i18n.t('myFoods.loadError') }}</div>
+                <button class="btn btn-secondary" type="button" (click)="foods.reload()">
+                  {{ i18n.t('diary.retry') }}
+                </button>
+              }
+              @case ('ready') {
+                @if (foods.foods().length === 0) {
+                  <div class="text-muted note">{{ i18n.t('myFoods.emptyBody') }}</div>
+                } @else {
+                  <div class="searchbox">
+                    <ct-icon class="search-icon" name="search" [size]="18" />
+                    <input
+                      class="input query"
+                      type="text"
+                      enterkeyhint="search"
+                      [placeholder]="i18n.t('myFoods.searchPlaceholder')"
+                      [attr.aria-label]="i18n.t('myFoods.searchPlaceholder')"
+                      [value]="myFoodsQuery()"
+                      (input)="onMyFoodsQueryInput($event)"
+                    />
+                  </div>
+
+                  @if (myFoods().length === 0) {
+                    <div class="text-muted note">{{ i18n.t('myFoods.noMatches') }}</div>
+                  } @else {
+                    @for (food of myFoods(); track food.id) {
+                      <button class="result" type="button" (click)="pickCustom(food)">
+                        <span class="result-text">
+                          <span class="result-name">{{ food.name }}</span>
+                          <span class="text-muted result-meta">{{ customMeta(food) }}</span>
+                        </span>
+                        <ct-icon class="result-chevron" name="chevron-right" [size]="18" />
+                      </button>
+                    }
+                  }
+                }
+              }
+            }
+          </div>
+        }
       }
 
       @if (scannerOpen()) {
@@ -509,6 +569,8 @@ export class AddFoodOverlay {
   protected readonly i18n = inject(I18n);
   private readonly api = inject(FoodSearchApi);
   private readonly genericApi = inject(GenericFoodsApi);
+  // Root-provided, so the catalog the My Foods page already loaded is reused here.
+  protected readonly foods = inject(FoodsStore);
   protected readonly round = round;
   protected readonly round1 = round1;
   protected readonly modes = MODES;
@@ -527,6 +589,11 @@ export class AddFoodOverlay {
   private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
   protected readonly queryText = signal('');
+  /** Which browse pane the chips have selected. */
+  protected readonly browseMode = signal<BrowseMode>('search');
+  // A separate query from the database search, so switching chips back and forth keeps
+  // both filters — they search entirely different things.
+  protected readonly myFoodsQuery = signal('');
   private readonly retryTick = signal(0);
   protected readonly selected = signal<FoodSearchResult | null>(null);
   protected readonly grams = signal(100);
@@ -584,6 +651,11 @@ export class AddFoodOverlay {
     return state.status === 'results' ? state.results : [];
   });
 
+  /** The user's own catalog, narrowed by this pane's own filter box. */
+  protected readonly myFoods = computed(() =>
+    filterFoods(this.foods.foods(), this.myFoodsQuery()),
+  );
+
   protected readonly preview = computed(() => {
     const sel = this.selected();
     return sel
@@ -601,12 +673,25 @@ export class AddFoodOverlay {
   }
 
   protected resultMeta(result: FoodSearchResult): string {
-    const brand = result.brand ?? this.i18n.t('addFood.generic');
+    // "Generic" is the right label for an unbranded database hit, but a custom food has
+    // no brand because the user didn't give it one — say whose it is instead.
+    const fallback =
+      result.source === 'custom' ? 'myFoods.customLabel' : 'addFood.generic';
+    const brand = result.brand ?? this.i18n.t(fallback);
     return `${brand} · ${round(result.kcalPer100g)} ${this.i18n.t('entry.kcalPer100')}`;
+  }
+
+  protected customMeta(food: CustomFood): string {
+    const brand = food.brand ?? this.i18n.t('myFoods.customLabel');
+    return `${brand} · ${round(food.kcalPer100g)} ${this.i18n.t('entry.kcalPer100')}`;
   }
 
   protected onQueryInput(event: Event): void {
     this.queryText.set((event.target as HTMLInputElement).value);
+  }
+
+  protected onMyFoodsQueryInput(event: Event): void {
+    this.myFoodsQuery.set((event.target as HTMLInputElement).value);
   }
 
   protected retry(): void {
@@ -616,6 +701,12 @@ export class AddFoodOverlay {
   protected onModeClick(mode: AddFoodMode): void {
     if (mode.key === 'scan') this.scannerOpen.set(true);
     else if (mode.key === 'photo') this.photoOpen.set(true);
+    else if (mode.key === 'search' || mode.key === 'myfoods') {
+      this.browseMode.set(mode.key);
+      // Deferred to the first open of this pane, so an Add-Food that only ever searches
+      // never requests the catalog.
+      if (mode.key === 'myfoods') this.foods.ensureLoaded();
+    }
   }
 
   protected closeScanner(): void {
@@ -636,9 +727,31 @@ export class AddFoodOverlay {
   }
 
   protected pick(result: FoodSearchResult): void {
-    this.selectedSource.set('search');
+    // The result carries its own provenance — a USDA catalog hit is 'generic', not the
+    // 'search' every pick used to be labelled.
+    this.selectedSource.set(result.source);
     this.selected.set(result);
     this.grams.set(100);
+  }
+
+  // A custom food enters the same portion step as any other pick: mapped onto
+  // FoodSearchResult, everything downstream (preview, meal switcher, grams) is unchanged.
+  protected pickCustom(food: CustomFood): void {
+    this.selectedSource.set('custom');
+    this.selected.set({
+      code: `custom:${food.id}`,
+      name: food.name,
+      brand: food.brand,
+      source: 'custom',
+      customFoodId: food.id,
+      servingSizeG: food.servingSizeG,
+      kcalPer100g: food.kcalPer100g,
+      proteinPer100g: food.proteinPer100g,
+      carbsPer100g: food.carbsPer100g,
+      fatPer100g: food.fatPer100g,
+    });
+    // The user recorded a serving size for exactly this reason — start there.
+    this.grams.set(food.servingSizeG ?? 100);
   }
 
   protected backToResults(): void {
@@ -657,13 +770,19 @@ export class AddFoodOverlay {
   protected confirm(): void {
     const sel = this.selected();
     if (!sel || this.grams() <= 0) return;
+    const source = this.selectedSource();
+    const isCustom = source === 'custom';
     this.log.emit({
       mealType: this.targetMeal(),
       name: sel.name,
       brand: sel.brand,
-      source: this.selectedSource(),
-      // The OFF barcode/product code — provenance for both search picks and scans.
-      externalId: sel.code,
+      source,
+      // The OFF barcode / USDA id — provenance for search picks and scans. A custom food
+      // has no external identity; it carries `customFoodId` instead, and that is all the
+      // API is sent: the nutrition below is only here to render the optimistic row until
+      // the server's own snapshot comes back.
+      externalId: isCustom ? null : sel.code,
+      customFoodId: isCustom ? (sel.customFoodId ?? null) : null,
       grams: this.grams(),
       kcalPer100g: sel.kcalPer100g,
       proteinPer100g: sel.proteinPer100g,

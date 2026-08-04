@@ -6,10 +6,11 @@ import { z } from 'zod';
 
 const MEALS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 
-// Only external sources are accepted for now. 'custom'/'recipe' need the server to
-// resolve the snapshot from custom_foods/recipes — modules that don't exist yet — so
-// they're rejected (invalid enum → 400) until those land.
-const EXTERNAL_SOURCES = ['search', 'barcode', 'ai', 'manual'] as const;
+// Sources that necessarily carry client-supplied nutrition: there is no server-side
+// source of truth for an Open Food Facts hit, a USDA catalog pick, an AI estimate or a
+// typed-in food. 'recipe' is absent because the recipes module doesn't exist yet, so it
+// falls through the union below and is rejected as a 400.
+const EXTERNAL_SOURCES = ['search', 'generic', 'barcode', 'ai', 'manual'] as const;
 
 // numeric(7,2) columns top out at 99999.99; cap here so a huge value is a 400, not a
 // numeric-overflow 500.
@@ -22,10 +23,10 @@ const per100gSchema = z.object({
   fat: z.number().min(0).max(100),
 });
 
-// One item to log. External sources always carry client-supplied nutrition (there is no
-// server-side source of truth for an OFF result or a typed-in food); `externalId` is the
-// OFF product code, provenance only.
-const newEntryItemSchema = z.object({
+// One item to log, from a source with no server-side record: the client sends the
+// nutrition because nothing else can. `externalId` is the OFF product code or USDA fdcId,
+// provenance only.
+const externalEntryItemSchema = z.object({
   source: z.enum(EXTERNAL_SOURCES),
   name: z.string().trim().min(1).max(200),
   brand: z.string().trim().max(200).nullish(),
@@ -34,6 +35,23 @@ const newEntryItemSchema = z.object({
   servingSizeG: z.number().positive().max(NUMERIC_7_2_MAX).nullish(),
   externalId: z.string().trim().max(64).nullish(),
 });
+
+// A custom food, where the server IS the source of truth (ARCHITECTURE.md §4.4). Only an
+// id and a portion are accepted; Zod strips unknown keys, so a client that also sends
+// name/brand/per100g has them silently discarded rather than trusted. That discard is the
+// trust boundary — the service reads the real values out of custom_foods.
+const customEntryItemSchema = z.object({
+  source: z.literal('custom'),
+  customFoodId: z.uuid(),
+  grams: z.number().positive().max(NUMERIC_7_2_MAX),
+});
+
+// Discriminated on `source`, so an unhandled source ('recipe') matches no branch and
+// comes back as a 400 rather than reaching the insert.
+const newEntryItemSchema = z.discriminatedUnion('source', [
+  externalEntryItemSchema,
+  customEntryItemSchema,
+]);
 
 // POST /api/diary/entries — batch add under one date + meal (the UI logs one at a time,
 // but the contract is a batch so the multi-add flow can post once).

@@ -34,6 +34,7 @@ interface DiaryEntryDto {
   per100g: Per100gDto;
   servingSizeG: number | null;
   externalId: string | null;
+  customFoodId: string | null;
 }
 
 interface DiaryDayDto {
@@ -43,14 +44,21 @@ interface DiaryDayDto {
   entries: DiaryEntryDto[];
 }
 
-interface NewEntryItemDto {
-  source: FoodSource;
-  name: string;
-  brand: string | null;
-  grams: number;
-  per100g: Per100gDto;
-  externalId: string | null;
-}
+// Two shapes, mirroring the backend's discriminated union. A custom food sends only an id
+// and a portion: the server owns its nutrition and re-reads it from `custom_foods`, so
+// sending our copy would be at best redundant and at worst a way to lie about it. The
+// server would strip the extra fields anyway; branching here makes that boundary visible
+// from the client side too.
+type NewEntryItemDto =
+  | { source: 'custom'; customFoodId: string; grams: number }
+  | {
+      source: Exclude<FoodSource, 'custom' | 'recipe'>;
+      name: string;
+      brand: string | null;
+      grams: number;
+      per100g: Per100gDto;
+      externalId: string | null;
+    };
 
 @Service()
 export class DiaryApi {
@@ -96,6 +104,7 @@ function toLogEntry(dto: DiaryEntryDto): LogEntry {
     brand: dto.brand,
     source: dto.source,
     externalId: dto.externalId,
+    customFoodId: dto.customFoodId,
     grams: dto.grams,
     kcalPer100g: dto.per100g.kcal,
     proteinPer100g: dto.per100g.protein,
@@ -104,10 +113,16 @@ function toLogEntry(dto: DiaryEntryDto): LogEntry {
   };
 }
 
-// Internal input → request DTO: gather the flat Portion fields into a per-100g object.
+// Internal input → request DTO: gather the flat Portion fields into a per-100g object,
+// unless the item is a custom food, in which case only its id and portion travel.
 function toItemDto(input: NewEntryInput): NewEntryItemDto {
+  if (input.source === 'custom' && input.customFoodId) {
+    return { source: 'custom', customFoodId: input.customFoodId, grams: input.grams };
+  }
+
   return {
-    source: input.source,
+    // 'recipe' is unreachable: nothing constructs one yet, and the API rejects it.
+    source: input.source as Exclude<FoodSource, 'custom' | 'recipe'>,
     name: input.name,
     brand: input.brand,
     grams: input.grams,

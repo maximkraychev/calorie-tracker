@@ -1,7 +1,7 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '../../db/client.js';
-import { logEntries } from '../../db/schema.js';
+import { customFoods, logEntries } from '../../db/schema.js';
 import { AppError } from '../../utils/app-error.js';
 import type { CreateEntriesBody, UpdateEntryBody } from './diary.schema.js';
 
@@ -109,28 +109,80 @@ export async function getDiary(userId: string, date: string): Promise<DiaryDay> 
 }
 
 // POST /api/diary/entries — insert one row per item, all under the same date + meal.
+//
+// Items with `source: 'custom'` carry only an id and a portion; their nutrition is read
+// out of custom_foods here rather than taken from the request (ARCHITECTURE.md §4.4).
+// That resolution happens up front, before anything is written, so a batch naming a food
+// the user doesn't own fails whole rather than inserting its other items.
 export async function addEntries(
   userId: string,
   body: CreateEntriesBody,
 ): Promise<DiaryEntry[]> {
-  const values = body.items.map((item) => ({
-    userId,
-    entryDate: body.date,
-    meal: body.meal,
-    name: item.name,
-    brand: item.brand?.trim() || null,
-    source: item.source,
-    grams: num(item.grams),
-    kcalPer100g: num(item.per100g.kcal),
-    proteinPer100g: num(item.per100g.protein),
-    carbsPer100g: num(item.per100g.carbs),
-    fatPer100g: num(item.per100g.fat),
-    servingSizeG: item.servingSizeG != null ? num(item.servingSizeG) : null,
-    externalId: item.externalId?.trim() || null,
-  }));
+  const customFoodsById = await loadCustomFoods(userId, body.items);
+
+  const values: (typeof logEntries.$inferInsert)[] = body.items.map((item) => {
+    const common = { userId, entryDate: body.date, meal: body.meal, grams: num(item.grams) };
+
+    if (item.source === 'custom') {
+      // Non-null: loadCustomFoods threw if any id was missing.
+      const food = customFoodsById.get(item.customFoodId)!;
+      return {
+        ...common,
+        source: 'custom' as const,
+        name: food.name,
+        brand: food.brand,
+        // Already strings on the way out of postgres.js, and strings is what the insert
+        // wants — a parse-and-restringify round trip would only invite precision loss.
+        kcalPer100g: food.kcalPer100g,
+        proteinPer100g: food.proteinPer100g,
+        carbsPer100g: food.carbsPer100g,
+        fatPer100g: food.fatPer100g,
+        servingSizeG: food.servingSizeG,
+        customFoodId: food.id,
+        externalId: null,
+      };
+    }
+
+    return {
+      ...common,
+      source: item.source,
+      name: item.name,
+      brand: item.brand?.trim() || null,
+      kcalPer100g: num(item.per100g.kcal),
+      proteinPer100g: num(item.per100g.protein),
+      carbsPer100g: num(item.per100g.carbs),
+      fatPer100g: num(item.per100g.fat),
+      servingSizeG: item.servingSizeG != null ? num(item.servingSizeG) : null,
+      customFoodId: null,
+      externalId: item.externalId?.trim() || null,
+    };
+  });
 
   const rows = await db.insert(logEntries).values(values).returning();
   return rows.map(toDiaryEntry);
+}
+
+// The custom foods a batch refers to, keyed by id — one query regardless of batch size.
+//
+// The lookup is scoped to the user, so a food belonging to someone else simply isn't in
+// the result and is indistinguishable from one that never existed: both are the same 404,
+// which is what keeps the endpoint from confirming that an id exists for another account.
+async function loadCustomFoods(
+  userId: string,
+  items: CreateEntriesBody['items'],
+): Promise<Map<string, typeof customFoods.$inferSelect>> {
+  const ids = [
+    ...new Set(items.filter((item) => item.source === 'custom').map((item) => item.customFoodId)),
+  ];
+  if (ids.length === 0) return new Map();
+
+  const rows = await db
+    .select()
+    .from(customFoods)
+    .where(and(eq(customFoods.userId, userId), inArray(customFoods.id, ids)));
+
+  if (rows.length !== ids.length) throw new AppError('Food not found', 404);
+  return new Map(rows.map((row) => [row.id, row]));
 }
 
 // PATCH /api/diary/entries/:id — move to a different grams/meal/date. Scoped to the

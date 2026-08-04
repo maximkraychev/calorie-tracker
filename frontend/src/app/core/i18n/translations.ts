@@ -109,6 +109,32 @@ export const en = {
   'photo.tryAgain': 'Try again',
   'photo.answer': 'Answer',
 
+  // My Foods (the user's own catalog)
+  'myFoods.title': 'My Foods',
+  'myFoods.searchPlaceholder': 'Search your foods',
+  'myFoods.add': 'Add food',
+  'myFoods.emptyTitle': 'No foods of your own yet',
+  'myFoods.emptyBody':
+    'Add the things you eat often — homemade dishes, local brands, anything the database misses.',
+  'myFoods.noMatches': 'No foods match your search.',
+  'myFoods.loading': 'Loading your foods…',
+  'myFoods.loadError': "Couldn't load your foods.",
+  'myFoods.newTitle': 'New food',
+  'myFoods.editTitle': 'Edit food',
+  'myFoods.name': 'Name',
+  'myFoods.namePlaceholder': 'e.g. Banitsa',
+  'myFoods.brand': 'Brand (optional)',
+  'myFoods.brandPlaceholder': 'e.g. Vereya',
+  'myFoods.per100g': 'Per 100 g',
+  'myFoods.kcal': 'Calories',
+  'myFoods.servingSize': 'Serving size (g, optional)',
+  'myFoods.servingHint': 'Offered as the starting portion when you log this food.',
+  'myFoods.save': 'Save food',
+  'myFoods.delete': 'Delete food',
+  'myFoods.deleteHint': 'Diary entries keep the values they were logged with.',
+  'myFoods.editAria': 'Edit {name}',
+  'myFoods.customLabel': 'My food',
+
   // Entry edit
   'entry.portionGrams': 'Portion (grams)',
   'entry.decreaseGrams': 'Decrease grams',
@@ -170,6 +196,11 @@ export const en = {
   'error.emailTaken': 'That email is already in use.',
   'error.network': 'Network error. Please try again.',
   'error.generic': 'Something went wrong. Please try again.',
+  'error.nameRequired': 'Name is required.',
+  'error.numberRequired': 'Enter a number.',
+  'error.kcalRange': 'Must be between 0 and 900 per 100 g.',
+  'error.macroRange': 'Must be between 0 and 100 g per 100 g.',
+  'error.servingPositive': 'Serving size must be greater than 0.',
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -282,6 +313,32 @@ export const bg: Record<TranslationKey, string> = {
   'photo.tryAgain': 'Опитай отново',
   'photo.answer': 'Отговори',
 
+  // My Foods (the user's own catalog)
+  'myFoods.title': 'Моите храни',
+  'myFoods.searchPlaceholder': 'Търси в моите храни',
+  'myFoods.add': 'Добави храна',
+  'myFoods.emptyTitle': 'Още нямаш собствени храни',
+  'myFoods.emptyBody':
+    'Добави това, което ядеш често — домашни ястия, местни марки, всичко, което липсва в базата.',
+  'myFoods.noMatches': 'Няма съвпадения сред твоите храни.',
+  'myFoods.loading': 'Зареждане на храните…',
+  'myFoods.loadError': 'Храните не се заредиха.',
+  'myFoods.newTitle': 'Нова храна',
+  'myFoods.editTitle': 'Редакция на храна',
+  'myFoods.name': 'Име',
+  'myFoods.namePlaceholder': 'напр. Баница',
+  'myFoods.brand': 'Марка (незадължително)',
+  'myFoods.brandPlaceholder': 'напр. Верея',
+  'myFoods.per100g': 'На 100 г',
+  'myFoods.kcal': 'Калории',
+  'myFoods.servingSize': 'Порция (г, незадължително)',
+  'myFoods.servingHint': 'Предлага се като начална порция, когато записваш храната.',
+  'myFoods.save': 'Запази храната',
+  'myFoods.delete': 'Изтрий храната',
+  'myFoods.deleteHint': 'Записите в дневника запазват стойностите, с които са добавени.',
+  'myFoods.editAria': 'Редактирай {name}',
+  'myFoods.customLabel': 'Моя храна',
+
   // Entry edit
   'entry.portionGrams': 'Порция (грамове)',
   'entry.decreaseGrams': 'Намали грамовете',
@@ -343,6 +400,11 @@ export const bg: Record<TranslationKey, string> = {
   'error.emailTaken': 'Този имейл вече се използва.',
   'error.network': 'Мрежова грешка. Опитай отново.',
   'error.generic': 'Нещо се обърка. Опитай отново.',
+  'error.nameRequired': 'Името е задължително.',
+  'error.numberRequired': 'Въведи число.',
+  'error.kcalRange': 'Трябва да е между 0 и 900 на 100 г.',
+  'error.macroRange': 'Трябва да е между 0 и 100 г на 100 г.',
+  'error.servingPositive': 'Порцията трябва да е по-голяма от 0.',
 };
 
 export const dictionaries = { en, bg } as const;

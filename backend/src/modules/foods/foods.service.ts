@@ -1,9 +1,11 @@
-import { and, desc, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, sql } from 'drizzle-orm';
 
 import { db } from '../../db/client.js';
-import { genericFoods, type GenericFoodPortion } from '../../db/schema.js';
+import { customFoods, genericFoods, type GenericFoodPortion } from '../../db/schema.js';
 import { tokenizeQuery } from '../../services/fdc-text.js';
 import { rankFoods } from '../../services/food-search.js';
+import { AppError } from '../../utils/app-error.js';
+import type { CustomFoodBody } from './foods.schema.js';
 
 interface Per100g {
   kcal: number;
@@ -13,14 +15,18 @@ interface Per100g {
 }
 
 /**
- * One search hit.
+ * One search hit from the generic (whole-food) catalog.
  *
- * `kind` is what makes this endpoint extensible: custom foods and recipes will be
- * returned from the same call, tagged `'custom'` / `'recipe'`, so the frontend merges one
- * list instead of reconciling three. Everything below is deliberately shaped like the
- * frontend's existing `FoodItem` (ARCHITECTURE.md §6) — `brand` is always null for a
- * generic food, but it stays in the shape so an Open Food Facts result and a USDA result
- * are interchangeable in the UI without a mapping layer.
+ * `kind` distinguishes it from other catalogs should they ever share this endpoint.
+ * Custom foods deliberately do NOT come back from here: they are a small, personal list
+ * the user browses, not a corpus to rank, and mixing them into the text-search ordering
+ * would mean tuning one relevance function against two very different data sets. They
+ * are served whole by `GET /api/foods` and filtered client-side.
+ *
+ * Everything below is deliberately shaped like the frontend's existing `FoodItem`
+ * (ARCHITECTURE.md §6) — `brand` is always null for a generic food, but it stays in the
+ * shape so an Open Food Facts result and a USDA result are interchangeable in the UI
+ * without a mapping layer.
  */
 export interface FoodSearchItem {
   kind: 'generic';
@@ -129,4 +135,137 @@ export async function searchFoods(query: string, limit: number): Promise<FoodSea
     servingSizeG: row.servingSizeG === null ? null : toNumber(row.servingSizeG),
     portions: row.portions ?? [],
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Custom foods (ARCHITECTURE.md §4.2) — CRUD over the user's own catalog.
+//
+// This is the only persisted food table a user can write to. Everything here is scoped
+// to `userId`: a row that isn't theirs is a 404, never a 403, so the API never confirms
+// that an id exists for somebody else.
+// ---------------------------------------------------------------------------
+
+/**
+ * A custom food as the API returns it.
+ *
+ * `source` and `externalId` are constants rather than dead weight: they make the shape
+ * assignable to the frontend's `FoodItem`, so a custom food drops into the same list rows
+ * and the same portion step as a search hit with no adapter in between.
+ */
+export interface CustomFoodItem {
+  id: string;
+  source: 'custom';
+  externalId: null;
+  name: string;
+  brand: string | null;
+  per100g: Per100g;
+  servingSizeG: number | null;
+}
+
+type CustomFoodRow = typeof customFoods.$inferSelect;
+
+/** Insert wants `numeric` as a string, same as it reads back as one. */
+function num(value: number): string {
+  return String(value);
+}
+
+function toCustomFoodItem(row: CustomFoodRow): CustomFoodItem {
+  return {
+    id: row.id,
+    source: 'custom',
+    externalId: null,
+    name: row.name,
+    brand: row.brand,
+    per100g: {
+      kcal: toNumber(row.kcalPer100g),
+      protein: toNumber(row.proteinPer100g),
+      carbs: toNumber(row.carbsPer100g),
+      fat: toNumber(row.fatPer100g),
+    },
+    // Not `toNumber`, which floors null to 0 — a missing serving size must stay null.
+    servingSizeG: row.servingSizeG === null ? null : toNumber(row.servingSizeG),
+  };
+}
+
+/** The columns a create or a full-replace update writes. */
+function toColumns(body: CustomFoodBody) {
+  return {
+    name: body.name,
+    brand: body.brand?.trim() || null,
+    kcalPer100g: num(body.per100g.kcal),
+    proteinPer100g: num(body.per100g.protein),
+    carbsPer100g: num(body.per100g.carbs),
+    fatPer100g: num(body.per100g.fat),
+    servingSizeG: body.servingSizeG != null ? num(body.servingSizeG) : null,
+  };
+}
+
+// GET /api/foods?q= — the whole catalog, or the rows whose name matches. Alphabetical
+// because the list is browsed, not ranked; `custom_foods_name_trgm_idx` serves the ILIKE.
+export async function listCustomFoods(userId: string, q?: string): Promise<CustomFoodItem[]> {
+  const rows = await db
+    .select()
+    .from(customFoods)
+    .where(
+      q === undefined
+        ? eq(customFoods.userId, userId)
+        : and(eq(customFoods.userId, userId), ilike(customFoods.name, `%${q}%`)),
+    )
+    .orderBy(asc(customFoods.name));
+
+  return rows.map(toCustomFoodItem);
+}
+
+// POST /api/foods
+export async function createCustomFood(
+  userId: string,
+  body: CustomFoodBody,
+): Promise<CustomFoodItem> {
+  const [row] = await db
+    .insert(customFoods)
+    .values({ userId, ...toColumns(body) })
+    .returning();
+
+  return toCustomFoodItem(row!);
+}
+
+// GET /api/foods/:id
+export async function getCustomFood(userId: string, id: string): Promise<CustomFoodItem> {
+  const [row] = await db
+    .select()
+    .from(customFoods)
+    .where(and(eq(customFoods.id, id), eq(customFoods.userId, userId)))
+    .limit(1);
+
+  if (!row) throw new AppError('Food not found', 404);
+  return toCustomFoodItem(row);
+}
+
+// PUT /api/foods/:id — a full replace, not a patch: every column is written, so dropping
+// `brand` or `servingSizeG` from the body clears them. `updated_at` is left alone; the
+// custom_foods_set_updated_at trigger (migration 0001) owns it.
+export async function updateCustomFood(
+  userId: string,
+  id: string,
+  body: CustomFoodBody,
+): Promise<CustomFoodItem> {
+  const [row] = await db
+    .update(customFoods)
+    .set(toColumns(body))
+    .where(and(eq(customFoods.id, id), eq(customFoods.userId, userId)))
+    .returning();
+
+  if (!row) throw new AppError('Food not found', 404);
+  return toCustomFoodItem(row);
+}
+
+// DELETE /api/foods/:id — diary entries survive: they carry their own nutrition snapshot
+// and `log_entries.custom_food_id` is ON DELETE SET NULL, so only the provenance link goes.
+export async function deleteCustomFood(userId: string, id: string): Promise<void> {
+  const deleted = await db
+    .delete(customFoods)
+    .where(and(eq(customFoods.id, id), eq(customFoods.userId, userId)))
+    .returning({ id: customFoods.id });
+
+  if (deleted.length === 0) throw new AppError('Food not found', 404);
 }
