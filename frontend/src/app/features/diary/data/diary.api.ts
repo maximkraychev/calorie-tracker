@@ -35,6 +35,7 @@ interface DiaryEntryDto {
   servingSizeG: number | null;
   externalId: string | null;
   customFoodId: string | null;
+  recipeId: string | null;
 }
 
 interface DiaryDayDto {
@@ -44,13 +45,14 @@ interface DiaryDayDto {
   entries: DiaryEntryDto[];
 }
 
-// Two shapes, mirroring the backend's discriminated union. A custom food sends only an id
-// and a portion: the server owns its nutrition and re-reads it from `custom_foods`, so
-// sending our copy would be at best redundant and at worst a way to lie about it. The
-// server would strip the extra fields anyway; branching here makes that boundary visible
-// from the client side too.
+// Three shapes, mirroring the backend's discriminated union. A custom food or a recipe
+// sends only an id and a portion: the server owns their nutrition and re-reads (or
+// re-derives) it, so sending our copy would be at best redundant and at worst a way to lie
+// about it. The server would strip the extra fields anyway; branching here makes that
+// boundary visible from the client side too.
 type NewEntryItemDto =
   | { source: 'custom'; customFoodId: string; grams: number }
+  | { source: 'recipe'; recipeId: string; grams: number }
   | {
       source: Exclude<FoodSource, 'custom' | 'recipe'>;
       name: string;
@@ -105,6 +107,7 @@ function toLogEntry(dto: DiaryEntryDto): LogEntry {
     source: dto.source,
     externalId: dto.externalId,
     customFoodId: dto.customFoodId,
+    recipeId: dto.recipeId,
     grams: dto.grams,
     kcalPer100g: dto.per100g.kcal,
     proteinPer100g: dto.per100g.protein,
@@ -120,8 +123,14 @@ function toItemDto(input: NewEntryInput): NewEntryItemDto {
     return { source: 'custom', customFoodId: input.customFoodId, grams: input.grams };
   }
 
+  if (input.source === 'recipe' && input.recipeId) {
+    return { source: 'recipe', recipeId: input.recipeId, grams: input.grams };
+  }
+
   return {
-    // 'recipe' is unreachable: nothing constructs one yet, and the API rejects it.
+    // The two server-owned sources are handled above; anything reaching here carries its
+    // own nutrition. A 'custom'/'recipe' entry with no id behind it would be one whose
+    // source row was deleted, which the diary never re-posts.
     source: input.source as Exclude<FoodSource, 'custom' | 'recipe'>,
     name: input.name,
     brand: input.brand,

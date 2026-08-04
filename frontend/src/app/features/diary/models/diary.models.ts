@@ -16,14 +16,7 @@ export const MEAL_LABEL_KEYS: Record<MealType, TranslationKey> = {
 // Where a logged food came from — mirrors the backend's `food_source` enum. Nutrition is
 // snapshotted at log time regardless of source, so later edits to a custom food/recipe
 // never touch past entries.
-export type FoodSource =
-  | 'search'
-  | 'generic'
-  | 'barcode'
-  | 'ai'
-  | 'recipe'
-  | 'custom'
-  | 'manual';
+export type FoodSource = 'search' | 'generic' | 'barcode' | 'ai' | 'recipe' | 'custom' | 'manual';
 
 // A single logged food: grams eaten + the per-100g nutrition copied in when logged.
 export interface LogEntry extends Portion {
@@ -41,6 +34,12 @@ export interface LogEntry extends Portion {
    * this entry is unaffected.
    */
   customFoodId: string | null;
+  /**
+   * The recipe this came from, for `source: 'recipe'`. Same contract as `customFoodId`:
+   * on the way in it is what the POST sends *instead of* nutrition, and the server derives
+   * the snapshot from the recipe's totals and weight.
+   */
+  recipeId: string | null;
 }
 
 // A meal's entries plus its kcal subtotal — the shape the diary page renders per section.

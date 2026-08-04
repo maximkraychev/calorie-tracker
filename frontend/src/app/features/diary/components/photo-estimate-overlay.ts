@@ -875,8 +875,9 @@ export class PhotoEstimateOverlay {
         source: 'ai' as const,
         // Provenance only, and only when USDA actually resolved it.
         externalId: item.fdcId === null ? null : String(item.fdcId),
-        // An estimate never comes from the user's own catalog.
+        // An estimate never comes from the user's own catalog or recipes.
         customFoodId: null,
+        recipeId: null,
         grams: item.grams,
         kcalPer100g: item.kcalPer100g,
         proteinPer100g: item.proteinPer100g,

@@ -3,8 +3,9 @@ import { Component, inject, input } from '@angular/core';
 import { I18n } from '../../core/i18n/i18n';
 import type { TranslationKey } from '../../core/i18n/translations';
 
-// Placeholder for tabs not yet built (My Foods, Recipes). `titleKey` is bound from the
-// route's `data` via withComponentInputBinding.
+// Placeholder for tabs not yet built. Nothing routes to it today — it is kept for the
+// next feature that needs a stub. `titleKey` is bound from the route's `data` via
+// withComponentInputBinding.
 @Component({
   selector: 'ct-coming-soon',
   template: `

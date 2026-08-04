@@ -2,6 +2,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '../../db/client.js';
 import { customFoods, logEntries } from '../../db/schema.js';
+import { loadRecipeSnapshots, type RecipeSnapshot } from '../recipes/recipes.service.js';
 import { AppError } from '../../utils/app-error.js';
 import type { CreateEntriesBody, UpdateEntryBody } from './diary.schema.js';
 
@@ -110,18 +111,39 @@ export async function getDiary(userId: string, date: string): Promise<DiaryDay> 
 
 // POST /api/diary/entries — insert one row per item, all under the same date + meal.
 //
-// Items with `source: 'custom'` carry only an id and a portion; their nutrition is read
-// out of custom_foods here rather than taken from the request (ARCHITECTURE.md §4.4).
-// That resolution happens up front, before anything is written, so a batch naming a food
-// the user doesn't own fails whole rather than inserting its other items.
-export async function addEntries(
-  userId: string,
-  body: CreateEntriesBody,
-): Promise<DiaryEntry[]> {
+// Items with `source: 'custom'` or `'recipe'` carry only an id and a portion; their
+// nutrition is read out of custom_foods / derived from the recipe here rather than taken
+// from the request (ARCHITECTURE.md §4.4). Both resolutions happen up front, before
+// anything is written, so a batch naming a food or recipe the user doesn't own fails
+// whole rather than inserting its other items.
+export async function addEntries(userId: string, body: CreateEntriesBody): Promise<DiaryEntry[]> {
   const customFoodsById = await loadCustomFoods(userId, body.items);
+  const recipesById = await loadRecipes(userId, body.items);
 
   const values: (typeof logEntries.$inferInsert)[] = body.items.map((item) => {
     const common = { userId, entryDate: body.date, meal: body.meal, grams: num(item.grams) };
+
+    if (item.source === 'recipe') {
+      // Non-null: loadRecipes threw if any id was missing.
+      const recipe = recipesById.get(item.recipeId)!;
+      return {
+        ...common,
+        source: 'recipe' as const,
+        name: recipe.name,
+        // A recipe has no brand — it is the user's own dish, and `source` already says so.
+        brand: null,
+        kcalPer100g: num(recipe.per100g.kcal),
+        proteinPer100g: num(recipe.per100g.protein),
+        carbsPer100g: num(recipe.per100g.carbs),
+        fatPer100g: num(recipe.per100g.fat),
+        // The whole dish is the natural serving, so the entry's derived `servings` reads
+        // as a fraction of the recipe — "0.25" for a quarter of the tray.
+        servingSizeG: num(recipe.totalWeightG),
+        customFoodId: null,
+        recipeId: recipe.id,
+        externalId: null,
+      };
+    }
 
     if (item.source === 'custom') {
       // Non-null: loadCustomFoods threw if any id was missing.
@@ -183,6 +205,19 @@ async function loadCustomFoods(
 
   if (rows.length !== ids.length) throw new AppError('Food not found', 404);
   return new Map(rows.map((row) => [row.id, row]));
+}
+
+// The recipes a batch refers to, resolved to name + weight + derived per-100g values. The
+// math is the recipes module's (`computeRecipeNutrition`), not duplicated here: a logged
+// recipe has to scale exactly the way the Recipes tab said it would.
+async function loadRecipes(
+  userId: string,
+  items: CreateEntriesBody['items'],
+): Promise<Map<string, RecipeSnapshot>> {
+  const ids = [
+    ...new Set(items.filter((item) => item.source === 'recipe').map((item) => item.recipeId)),
+  ];
+  return loadRecipeSnapshots(userId, ids);
 }
 
 // PATCH /api/diary/entries/:id — move to a different grams/meal/date. Scoped to the

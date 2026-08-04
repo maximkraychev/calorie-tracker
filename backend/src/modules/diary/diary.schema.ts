@@ -8,8 +8,8 @@ const MEALS = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
 
 // Sources that necessarily carry client-supplied nutrition: there is no server-side
 // source of truth for an Open Food Facts hit, a USDA catalog pick, an AI estimate or a
-// typed-in food. 'recipe' is absent because the recipes module doesn't exist yet, so it
-// falls through the union below and is rejected as a 400.
+// typed-in food. 'custom' and 'recipe' are absent because the server owns those — they
+// get their own branches below.
 const EXTERNAL_SOURCES = ['search', 'generic', 'barcode', 'ai', 'manual'] as const;
 
 // numeric(7,2) columns top out at 99999.99; cap here so a huge value is a 400, not a
@@ -46,11 +46,22 @@ const customEntryItemSchema = z.object({
   grams: z.number().positive().max(NUMERIC_7_2_MAX),
 });
 
-// Discriminated on `source`, so an unhandled source ('recipe') matches no branch and
-// comes back as a 400 rather than reaching the insert.
+// A recipe, on the same terms as a custom food: an id and a portion. The server derives
+// the per-100g snapshot from the recipe's totals and weight (recipes.service.ts), which
+// is the only place that math lives — a client cannot supply it, and a recipe edited
+// after this entry was logged leaves the entry alone.
+const recipeEntryItemSchema = z.object({
+  source: z.literal('recipe'),
+  recipeId: z.uuid(),
+  grams: z.number().positive().max(NUMERIC_7_2_MAX),
+});
+
+// Discriminated on `source`, so an unhandled source matches no branch and comes back as a
+// 400 rather than reaching the insert.
 const newEntryItemSchema = z.discriminatedUnion('source', [
   externalEntryItemSchema,
   customEntryItemSchema,
+  recipeEntryItemSchema,
 ]);
 
 // POST /api/diary/entries — batch add under one date + meal (the UI logs one at a time,

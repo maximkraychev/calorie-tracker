@@ -28,6 +28,12 @@ import { macrosOf, round, round1 } from '../../../shared/utils/nutrition.utils';
 import { Icon, type IconName } from '../../../shared/ui/icon';
 import { FoodsStore } from '../../foods/data/foods.store';
 import { filterFoods, type CustomFood } from '../../foods/models/custom-food.models';
+import { RecipesStore } from '../../recipes/data/recipes.store';
+import {
+  filterRecipes,
+  type NewRecipeIngredient,
+  type Recipe,
+} from '../../recipes/models/recipe.models';
 import { FoodSearchApi } from '../data/food-search.api';
 import { GenericFoodsApi } from '../data/generic-foods.api';
 import {
@@ -54,8 +60,7 @@ type SearchState =
   | { status: 'empty' }
   | { status: 'error' };
 
-// The Add-Food method chips. Recipes and manual entry render disabled until their flows
-// are built.
+// The Add-Food method chips. Manual entry renders disabled until its flow is built.
 interface AddFoodMode {
   key: string;
   icon: IconName;
@@ -67,14 +72,27 @@ const MODES: readonly AddFoodMode[] = [
   { key: 'search', icon: 'search', labelKey: 'addFood.modeSearch', enabled: true },
   { key: 'scan', icon: 'scan', labelKey: 'addFood.modeScan', enabled: true },
   { key: 'myfoods', icon: 'apple', labelKey: 'nav.myFoods', enabled: true },
-  { key: 'recipes', icon: 'book', labelKey: 'nav.recipes', enabled: false },
+  { key: 'recipes', icon: 'book', labelKey: 'nav.recipes', enabled: true },
   { key: 'photo', icon: 'sparkles', labelKey: 'addFood.modePhoto', enabled: true },
   { key: 'manual', icon: 'keyboard', labelKey: 'addFood.modeManual', enabled: false },
 ];
 
-// The two chips that swap the overlay's browse pane. Scan and photo open their own
-// overlays instead, so they are not modes in this sense.
-type BrowseMode = 'search' | 'myfoods';
+/**
+ * What the overlay is being used for.
+ *
+ * 'log'  — the diary flow: pick a food, choose a meal and a portion, emit a log entry.
+ * 'pick' — the recipe sheet borrows the same overlay to choose an ingredient. There is no
+ *          meal to log against, so the meal switcher is hidden and `pickIngredient` is
+ *          emitted instead of `log`. Recipes and photo estimates are also hidden: recipes
+ *          do not nest, and the photo flow resolves a whole meal straight to the diary.
+ */
+export type AddFoodPurpose = 'log' | 'pick';
+
+// The chips that swap the overlay's browse pane. Scan and photo open their own overlays
+// instead, so they are not modes in this sense.
+type BrowseMode = 'search' | 'myfoods' | 'recipes';
+
+const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
 
 // Full-screen Add-Food overlay (z 55, above meal detail): method chips + debounced
 // Open Food Facts search, then a portion step (meal switcher, grams stepper, live
@@ -95,7 +113,9 @@ type BrowseMode = 'search' | 'myfoods';
             <ct-icon name="arrow-left" />
           </button>
         }
-        <div class="title">{{ i18n.t('diary.addFood') }}</div>
+        <div class="title">
+          {{ i18n.t(purpose() === 'pick' ? 'recipes.addIngredient' : 'diary.addFood') }}
+        </div>
         <button
           class="btn btn-icon"
           type="button"
@@ -111,19 +131,21 @@ type BrowseMode = 'search' | 'myfoods';
           <div class="sel-name">{{ sel.name }}</div>
           <div class="text-muted sel-meta">{{ resultMeta(sel) }}</div>
 
-          <label class="field-label">{{ i18n.t('addFood.meal') }}</label>
-          <div class="meal-seg">
-            @for (meal of mealOrder; track meal) {
-              <button
-                class="seg"
-                type="button"
-                [class.active]="targetMeal() === meal"
-                (click)="targetMeal.set(meal)"
-              >
-                {{ i18n.t(mealLabelKeys[meal]) }}
-              </button>
-            }
-          </div>
+          @if (purpose() === 'log') {
+            <label class="field-label">{{ i18n.t('addFood.meal') }}</label>
+            <div class="meal-seg">
+              @for (meal of mealOrder; track meal) {
+                <button
+                  class="seg"
+                  type="button"
+                  [class.active]="targetMeal() === meal"
+                  (click)="targetMeal.set(meal)"
+                >
+                  {{ i18n.t(mealLabelKeys[meal]) }}
+                </button>
+              }
+            </div>
+          }
 
           <label class="field-label" for="af-grams">{{ i18n.t('entry.portionGrams') }}</label>
           <div class="stepper">
@@ -169,12 +191,12 @@ type BrowseMode = 'search' | 'myfoods';
         <div class="foot">
           <button class="btn btn-primary confirm" type="button" (click)="confirm()">
             <ct-icon name="check" />
-            {{ i18n.t('addFood.logFood') }}
+            {{ i18n.t(purpose() === 'pick' ? 'recipes.addIngredient' : 'addFood.logFood') }}
           </button>
         </div>
       } @else {
         <div class="chips">
-          @for (mode of modes; track mode.key) {
+          @for (mode of modes(); track mode.key) {
             <button
               class="chip"
               type="button"
@@ -240,7 +262,7 @@ type BrowseMode = 'search' | 'myfoods';
               }
             }
           </div>
-        } @else {
+        } @else if (browseMode() === 'myfoods') {
           <div class="body">
             @switch (foods.status()) {
               @case ('loading') {
@@ -290,6 +312,57 @@ type BrowseMode = 'search' | 'myfoods';
               }
             }
           </div>
+        } @else {
+          <!-- Recipes: browsed and filtered client-side, exactly like My Foods above. -->
+          <div class="body">
+            @switch (recipesStore.status()) {
+              @case ('loading') {
+                <div
+                  class="spinner"
+                  role="status"
+                  [attr.aria-label]="i18n.t('recipes.loading')"
+                ></div>
+              }
+              @case ('error') {
+                <div class="text-muted note">{{ i18n.t('recipes.loadError') }}</div>
+                <button class="btn btn-secondary" type="button" (click)="recipesStore.reload()">
+                  {{ i18n.t('diary.retry') }}
+                </button>
+              }
+              @case ('ready') {
+                @if (recipesStore.recipes().length === 0) {
+                  <div class="text-muted note">{{ i18n.t('recipes.emptyBody') }}</div>
+                } @else {
+                  <div class="searchbox">
+                    <ct-icon class="search-icon" name="search" [size]="18" />
+                    <input
+                      class="input query"
+                      type="text"
+                      enterkeyhint="search"
+                      [placeholder]="i18n.t('recipes.searchPlaceholder')"
+                      [attr.aria-label]="i18n.t('recipes.searchPlaceholder')"
+                      [value]="recipesQuery()"
+                      (input)="onRecipesQueryInput($event)"
+                    />
+                  </div>
+
+                  @if (recipes().length === 0) {
+                    <div class="text-muted note">{{ i18n.t('recipes.noMatches') }}</div>
+                  } @else {
+                    @for (recipe of recipes(); track recipe.id) {
+                      <button class="result" type="button" (click)="pickRecipe(recipe)">
+                        <span class="result-text">
+                          <span class="result-name">{{ recipe.name }}</span>
+                          <span class="text-muted result-meta">{{ recipeMeta(recipe) }}</span>
+                        </span>
+                        <ct-icon class="result-chevron" name="chevron-right" [size]="18" />
+                      </button>
+                    }
+                  }
+                }
+              }
+            }
+          </div>
         }
       }
 
@@ -299,7 +372,7 @@ type BrowseMode = 'search' | 'myfoods';
 
       @if (photoOpen()) {
         <ct-photo-estimate-overlay
-          [meal]="meal()"
+          [meal]="targetMeal()"
           (log)="logMany.emit($event)"
           (close)="closePhoto()"
         />
@@ -571,33 +644,52 @@ export class AddFoodOverlay {
   private readonly genericApi = inject(GenericFoodsApi);
   // Root-provided, so the catalog the My Foods page already loaded is reused here.
   protected readonly foods = inject(FoodsStore);
+  // Same deal for recipes — the Recipes tab and this pane share one loaded copy.
+  protected readonly recipesStore = inject(RecipesStore);
   protected readonly round = round;
   protected readonly round1 = round1;
-  protected readonly modes = MODES;
   protected readonly mealOrder = MEAL_ORDER;
   protected readonly mealLabelKeys = MEAL_LABEL_KEYS;
   protected readonly minQuery = MIN_QUERY_LENGTH;
 
-  /** The meal whose "+" opened the overlay — the portion step's default target. */
-  readonly meal = input.required<MealType>();
+  /** Log a diary entry, or pick an ingredient for a recipe. */
+  readonly purpose = input<AddFoodPurpose>('log');
+
+  /**
+   * The meal whose "+" opened the overlay — the portion step's default target.
+   *
+   * Null in 'pick' mode, where there is no meal in play at all.
+   */
+  readonly meal = input<MealType | null>(null);
 
   readonly close = output<void>();
   readonly log = output<Omit<LogEntry, 'id'>>();
   /** A whole meal at once — the photo estimate resolves several ingredients per photo. */
   readonly logMany = output<Omit<LogEntry, 'id'>[]>();
+  /** 'pick' mode's answer: the chosen food as a recipe ingredient. */
+  readonly pickIngredient = output<NewRecipeIngredient>();
+
+  protected readonly modes = computed(() =>
+    this.purpose() === 'pick'
+      ? MODES.filter((mode) => !PICK_HIDDEN_MODES.includes(mode.key))
+      : MODES,
+  );
 
   private readonly searchInput = viewChild<ElementRef<HTMLInputElement>>('searchInput');
 
   protected readonly queryText = signal('');
   /** Which browse pane the chips have selected. */
   protected readonly browseMode = signal<BrowseMode>('search');
-  // A separate query from the database search, so switching chips back and forth keeps
-  // both filters — they search entirely different things.
+  // Separate queries from the database search, so switching chips back and forth keeps
+  // every filter — they search entirely different things.
   protected readonly myFoodsQuery = signal('');
+  protected readonly recipesQuery = signal('');
   private readonly retryTick = signal(0);
   protected readonly selected = signal<FoodSearchResult | null>(null);
   protected readonly grams = signal(100);
-  protected readonly targetMeal = linkedSignal(() => this.meal());
+  // Falls back to the first meal only in 'pick' mode, where no meal is supplied and the
+  // switcher is hidden — nothing downstream reads it there.
+  protected readonly targetMeal = linkedSignal<MealType>(() => this.meal() ?? MEAL_ORDER[0]!);
   protected readonly scannerOpen = signal(false);
   protected readonly photoOpen = signal(false);
 
@@ -652,8 +744,11 @@ export class AddFoodOverlay {
   });
 
   /** The user's own catalog, narrowed by this pane's own filter box. */
-  protected readonly myFoods = computed(() =>
-    filterFoods(this.foods.foods(), this.myFoodsQuery()),
+  protected readonly myFoods = computed(() => filterFoods(this.foods.foods(), this.myFoodsQuery()));
+
+  /** The user's own recipes, narrowed by this pane's own filter box. */
+  protected readonly recipes = computed(() =>
+    filterRecipes(this.recipesStore.recipes(), this.recipesQuery()),
   );
 
   protected readonly preview = computed(() => {
@@ -675,8 +770,7 @@ export class AddFoodOverlay {
   protected resultMeta(result: FoodSearchResult): string {
     // "Generic" is the right label for an unbranded database hit, but a custom food has
     // no brand because the user didn't give it one — say whose it is instead.
-    const fallback =
-      result.source === 'custom' ? 'myFoods.customLabel' : 'addFood.generic';
+    const fallback = result.source === 'custom' ? 'myFoods.customLabel' : 'addFood.generic';
     const brand = result.brand ?? this.i18n.t(fallback);
     return `${brand} · ${round(result.kcalPer100g)} ${this.i18n.t('entry.kcalPer100')}`;
   }
@@ -684,6 +778,11 @@ export class AddFoodOverlay {
   protected customMeta(food: CustomFood): string {
     const brand = food.brand ?? this.i18n.t('myFoods.customLabel');
     return `${brand} · ${round(food.kcalPer100g)} ${this.i18n.t('entry.kcalPer100')}`;
+  }
+
+  // The whole-dish weight, because that is the portion the grams stepper starts on.
+  protected recipeMeta(recipe: Recipe): string {
+    return `${round(recipe.totalWeightG)} g · ${round(recipe.kcalPer100g)} ${this.i18n.t('entry.kcalPer100')}`;
   }
 
   protected onQueryInput(event: Event): void {
@@ -694,6 +793,10 @@ export class AddFoodOverlay {
     this.myFoodsQuery.set((event.target as HTMLInputElement).value);
   }
 
+  protected onRecipesQueryInput(event: Event): void {
+    this.recipesQuery.set((event.target as HTMLInputElement).value);
+  }
+
   protected retry(): void {
     this.retryTick.update((tick) => tick + 1);
   }
@@ -701,11 +804,12 @@ export class AddFoodOverlay {
   protected onModeClick(mode: AddFoodMode): void {
     if (mode.key === 'scan') this.scannerOpen.set(true);
     else if (mode.key === 'photo') this.photoOpen.set(true);
-    else if (mode.key === 'search' || mode.key === 'myfoods') {
+    else if (mode.key === 'search' || mode.key === 'myfoods' || mode.key === 'recipes') {
       this.browseMode.set(mode.key);
-      // Deferred to the first open of this pane, so an Add-Food that only ever searches
-      // never requests the catalog.
+      // Deferred to the first open of each pane, so an Add-Food that only ever searches
+      // requests neither list.
       if (mode.key === 'myfoods') this.foods.ensureLoaded();
+      if (mode.key === 'recipes') this.recipesStore.ensureLoaded();
     }
   }
 
@@ -754,6 +858,27 @@ export class AddFoodOverlay {
     this.grams.set(food.servingSizeG ?? 100);
   }
 
+  // A recipe enters the same portion step as any other pick, mapped onto the shared
+  // result shape. `recipeId` is what the diary POST will send instead of the nutrition
+  // below — that copy only renders the preview and the optimistic row.
+  protected pickRecipe(recipe: Recipe): void {
+    this.selectedSource.set('recipe');
+    this.selected.set({
+      code: `recipe:${recipe.id}`,
+      name: recipe.name,
+      brand: null,
+      source: 'recipe',
+      recipeId: recipe.id,
+      servingSizeG: recipe.totalWeightG,
+      kcalPer100g: recipe.kcalPer100g,
+      proteinPer100g: recipe.proteinPer100g,
+      carbsPer100g: recipe.carbsPer100g,
+      fatPer100g: recipe.fatPer100g,
+    });
+    // The whole dish, which the user then dials down to the portion they actually ate.
+    this.grams.set(recipe.totalWeightG);
+  }
+
   protected backToResults(): void {
     this.selected.set(null);
   }
@@ -772,17 +897,38 @@ export class AddFoodOverlay {
     if (!sel || this.grams() <= 0) return;
     const source = this.selectedSource();
     const isCustom = source === 'custom';
+    const isRecipe = source === 'recipe';
+
+    if (this.purpose() === 'pick') {
+      this.pickIngredient.emit({
+        name: sel.name,
+        brand: sel.brand,
+        // 'recipe' is unreachable here: the recipes chip is hidden in pick mode, because
+        // recipes do not nest.
+        source: isCustom ? 'custom' : (source as 'search' | 'generic' | 'barcode' | 'manual'),
+        customFoodId: isCustom ? (sel.customFoodId ?? null) : null,
+        externalId: isCustom ? null : sel.code,
+        grams: this.grams(),
+        kcalPer100g: sel.kcalPer100g,
+        proteinPer100g: sel.proteinPer100g,
+        carbsPer100g: sel.carbsPer100g,
+        fatPer100g: sel.fatPer100g,
+      });
+      return;
+    }
+
     this.log.emit({
       mealType: this.targetMeal(),
       name: sel.name,
       brand: sel.brand,
       source,
       // The OFF barcode / USDA id — provenance for search picks and scans. A custom food
-      // has no external identity; it carries `customFoodId` instead, and that is all the
-      // API is sent: the nutrition below is only here to render the optimistic row until
-      // the server's own snapshot comes back.
-      externalId: isCustom ? null : sel.code,
+      // or a recipe has no external identity; it carries `customFoodId` / `recipeId`
+      // instead, and that is all the API is sent: the nutrition below is only here to
+      // render the optimistic row until the server's own snapshot comes back.
+      externalId: isCustom || isRecipe ? null : sel.code,
       customFoodId: isCustom ? (sel.customFoodId ?? null) : null,
+      recipeId: isRecipe ? (sel.recipeId ?? null) : null,
       grams: this.grams(),
       kcalPer100g: sel.kcalPer100g,
       proteinPer100g: sel.proteinPer100g,
