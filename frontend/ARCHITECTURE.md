@@ -49,7 +49,7 @@ src/app/
 │   │   ├── button.ts
 │   │   ├── card.ts
 │   │   ├── progress-ring.ts      # Calories-remaining ring
-│   │   ├── macro-bar.ts          # Protein/carbs/fat bar
+│   │   ├── macro-bar.ts          # Carbs/protein/fat bar (see §3.1 for the order)
 │   │   ├── empty-state.ts
 │   │   ├── spinner.ts
 │   │   └── dialog.ts
@@ -163,6 +163,24 @@ export interface DailyGoal {
   fat: number;
 }
 ```
+
+### 3.1 Macro display order
+
+Macros are always shown **carbs → protein → fat**, in every readout: the diary's macro
+bars and goal rings, portion/totals previews, the entry-edit C/P/F cells, the photo
+estimate list and footer, the per-100g `x/y/z` lines, and the order of the number inputs
+in the manual-entry, custom-food, and recipe forms (which also sets tab order).
+
+Object keys and API payloads keep their own order — they are keyed, not positional, so
+`Macros`/`DailyGoal` field order is cosmetic and left as `protein, carbs, fat`. Only what
+renders is ordered. Two arrays drive the looped readouts and are the first place to change
+if the order moves again:
+
+- `features/diary/components/daily-totals.ts` → `macroRows`
+- `core/layout/goals-sheet.ts` → `MACROS`
+
+Color is bound to the macro, not the position (`--macro-carbs` amber, `--macro-protein`
+indigo, `--macro-fat` rose), so each macro keeps its identity wherever it appears.
 
 ## 4. Routing
 

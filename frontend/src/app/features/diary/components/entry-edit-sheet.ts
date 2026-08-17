@@ -6,7 +6,7 @@ import { Icon } from '../../../shared/ui/icon';
 import type { LogEntry } from '../models/diary.models';
 
 // Bottom sheet for editing a logged entry's portion. The grams draft lives here (reset
-// whenever a different entry opens) and the kcal/P/C/F preview recomputes live; nothing
+// whenever a different entry opens) and the kcal/C/P/F preview recomputes live; nothing
 // touches the diary until Save/Delete is emitted.
 @Component({
   selector: 'ct-entry-edit-sheet',
@@ -64,12 +64,12 @@ import type { LogEntry } from '../models/diary.models';
             <div class="cell-value big">{{ round(preview().kcal) }}</div>
           </div>
           <div class="cell">
-            <div class="text-muted cell-label">{{ i18n.t('macro.p') }}</div>
-            <div class="cell-value">{{ round1(preview().protein) }}</div>
-          </div>
-          <div class="cell">
             <div class="text-muted cell-label">{{ i18n.t('macro.c') }}</div>
             <div class="cell-value">{{ round1(preview().carbs) }}</div>
+          </div>
+          <div class="cell">
+            <div class="text-muted cell-label">{{ i18n.t('macro.p') }}</div>
+            <div class="cell-value">{{ round1(preview().protein) }}</div>
           </div>
           <div class="cell">
             <div class="text-muted cell-label">{{ i18n.t('macro.f') }}</div>

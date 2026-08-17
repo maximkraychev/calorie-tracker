@@ -137,17 +137,10 @@ export class DailyTotals {
   readonly totals = input.required<Macros>();
   readonly goals = input.required<Goals>();
 
-  // Per-macro display rows — each with its own color + tint token (indigo/amber/rose).
+  // Per-macro display rows in carbs -> protein -> fat order, each with its own color +
+  // tint token (amber/indigo/rose).
   // Labels go through i18n.t(), so the computed re-runs on a language switch.
   protected readonly macroRows = computed(() => [
-    {
-      key: 'protein',
-      label: this.i18n.t('diary.protein'),
-      color: 'var(--macro-protein)',
-      track: 'var(--macro-protein-100)',
-      value: this.totals().protein,
-      goal: this.goals().protein,
-    },
     {
       key: 'carbs',
       label: this.i18n.t('diary.carbs'),
@@ -155,6 +148,14 @@ export class DailyTotals {
       track: 'var(--macro-carbs-100)',
       value: this.totals().carbs,
       goal: this.goals().carbs,
+    },
+    {
+      key: 'protein',
+      label: this.i18n.t('diary.protein'),
+      color: 'var(--macro-protein)',
+      track: 'var(--macro-protein-100)',
+      value: this.totals().protein,
+      goal: this.goals().protein,
     },
     {
       key: 'fat',

@@ -16,9 +16,10 @@ interface MacroMeta {
   color: string;
   track: string;
 }
+// Display order is carbs -> protein -> fat, matching the diary bars and every macro readout.
 const MACROS: readonly MacroMeta[] = [
-  { key: 'protein', kcalPerG: 4, labelKey: 'goals.protein', color: 'var(--macro-protein)', track: 'var(--macro-protein-100)' },
   { key: 'carbs', kcalPerG: 4, labelKey: 'goals.carbs', color: 'var(--macro-carbs)', track: 'var(--macro-carbs-100)' },
+  { key: 'protein', kcalPerG: 4, labelKey: 'goals.protein', color: 'var(--macro-protein)', track: 'var(--macro-protein-100)' },
   { key: 'fat', kcalPerG: 9, labelKey: 'goals.fat', color: 'var(--macro-fat)', track: 'var(--macro-fat-100)' },
 ];
 

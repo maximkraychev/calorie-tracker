@@ -101,19 +101,6 @@ const NOMINAL_GRAMS = 100;
             }
           </div>
           <div class="field">
-            <label for="mn-protein">{{ i18n.t('diary.protein') }}</label>
-            <input
-              id="mn-protein"
-              class="input num"
-              type="number"
-              inputmode="decimal"
-              [formField]="manualForm.protein"
-            />
-            @if (showError(manualForm.protein)) {
-              <p class="field-error">{{ firstError(manualForm.protein) }}</p>
-            }
-          </div>
-          <div class="field">
             <label for="mn-carbs">{{ i18n.t('diary.carbs') }}</label>
             <input
               id="mn-carbs"
@@ -124,6 +111,19 @@ const NOMINAL_GRAMS = 100;
             />
             @if (showError(manualForm.carbs)) {
               <p class="field-error">{{ firstError(manualForm.carbs) }}</p>
+            }
+          </div>
+          <div class="field">
+            <label for="mn-protein">{{ i18n.t('diary.protein') }}</label>
+            <input
+              id="mn-protein"
+              class="input num"
+              type="number"
+              inputmode="decimal"
+              [formField]="manualForm.protein"
+            />
+            @if (showError(manualForm.protein)) {
+              <p class="field-error">{{ firstError(manualForm.protein) }}</p>
             }
           </div>
           <div class="field">
@@ -183,14 +183,14 @@ const NOMINAL_GRAMS = 100;
             <span class="text-muted preview-weight">{{ round(portionGrams()) }} g</span>
           </div>
           <div class="preview-macros">
-            <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round1(totals().protein) }} g</div>
             <div>{{ i18n.t('diary.carbs') }}&nbsp;{{ round1(totals().carbs) }} g</div>
+            <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round1(totals().protein) }} g</div>
             <div>{{ i18n.t('diary.fat') }}&nbsp;{{ round1(totals().fat) }} g</div>
           </div>
           <div class="text-muted preview-per100">
             {{ i18n.t('recipes.per100g') }}: {{ round(per100g().kcalPer100g) }}
-            {{ i18n.t('diary.kcal') }} · {{ round1(per100g().proteinPer100g) }}/{{
-              round1(per100g().carbsPer100g)
+            {{ i18n.t('diary.kcal') }} · {{ round1(per100g().carbsPer100g) }}/{{
+              round1(per100g().proteinPer100g)
             }}/{{ round1(per100g().fatPer100g) }} g
           </div>
         </div>

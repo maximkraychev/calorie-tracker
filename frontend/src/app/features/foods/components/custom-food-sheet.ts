@@ -103,19 +103,6 @@ interface FoodDraft {
               }
             </div>
             <div class="field">
-              <label for="cf-protein">{{ i18n.t('diary.protein') }}</label>
-              <input
-                id="cf-protein"
-                class="input num"
-                type="number"
-                inputmode="decimal"
-                [formField]="foodForm.protein"
-              />
-              @if (showError(foodForm.protein)) {
-                <p class="field-error">{{ firstError(foodForm.protein) }}</p>
-              }
-            </div>
-            <div class="field">
               <label for="cf-carbs">{{ i18n.t('diary.carbs') }}</label>
               <input
                 id="cf-carbs"
@@ -126,6 +113,19 @@ interface FoodDraft {
               />
               @if (showError(foodForm.carbs)) {
                 <p class="field-error">{{ firstError(foodForm.carbs) }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="cf-protein">{{ i18n.t('diary.protein') }}</label>
+              <input
+                id="cf-protein"
+                class="input num"
+                type="number"
+                inputmode="decimal"
+                [formField]="foodForm.protein"
+              />
+              @if (showError(foodForm.protein)) {
+                <p class="field-error">{{ firstError(foodForm.protein) }}</p>
               }
             </div>
             <div class="field">

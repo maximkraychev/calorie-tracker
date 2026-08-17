@@ -234,8 +234,8 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
                   <span class="item-kcal"
                     >{{ round(macrosOf(item).kcal) }} {{ i18n.t('diary.kcal') }}</span
                   >
-                  <span>{{ i18n.t('diary.protein') }} {{ round1(macrosOf(item).protein) }} g</span>
                   <span>{{ i18n.t('diary.carbs') }} {{ round1(macrosOf(item).carbs) }} g</span>
+                  <span>{{ i18n.t('diary.protein') }} {{ round1(macrosOf(item).protein) }} g</span>
                   <span>{{ i18n.t('diary.fat') }} {{ round1(macrosOf(item).fat) }} g</span>
                 </div>
 
@@ -322,7 +322,7 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
             <span class="totals-kcal">{{ round(totals().kcal) }}</span>
             <span class="totals-label">{{ i18n.t('photo.total') }}</span>
             <span class="text-muted totals-macros">
-              {{ round1(totals().protein) }} / {{ round1(totals().carbs) }} /
+              {{ round1(totals().carbs) }} / {{ round1(totals().protein) }} /
               {{ round1(totals().fat) }} g
             </span>
           </div>

@@ -40,8 +40,8 @@ import type { MealSection } from '../models/diary.models';
             <span class="totals-label">{{ i18n.t('diary.kcal') }} · {{ itemsLabel() }}</span>
           </div>
           <div class="totals-macros">
-            <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round(totals().protein) }} g</div>
             <div>{{ i18n.t('diary.carbs') }}&nbsp;{{ round(totals().carbs) }} g</div>
+            <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round(totals().protein) }} g</div>
             <div>{{ i18n.t('diary.fat') }}&nbsp;{{ round(totals().fat) }} g</div>
           </div>
         </div>

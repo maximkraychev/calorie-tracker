@@ -174,8 +174,8 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
               <span class="preview-label">{{ i18n.t('diary.kcal') }}</span>
             </div>
             <div class="preview-macros">
-              <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round1(preview().protein) }} g</div>
               <div>{{ i18n.t('diary.carbs') }}&nbsp;{{ round1(preview().carbs) }} g</div>
+              <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round1(preview().protein) }} g</div>
               <div>{{ i18n.t('diary.fat') }}&nbsp;{{ round1(preview().fat) }} g</div>
             </div>
           </div>
