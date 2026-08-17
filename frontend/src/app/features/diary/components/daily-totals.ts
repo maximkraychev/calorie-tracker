@@ -52,7 +52,7 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
           <div class="macro">
             <div class="macro-label">
               <span class="dot" [style.background]="m.color"></span>
-              <span [style.color]="m.color">{{ m.label }}</span>
+              <span [style.color]="m.text">{{ m.label }}</span>
             </div>
             <div class="macro-value">
               {{ round(m.value) }}<span class="macro-goal"> / {{ m.goal }} g</span>
@@ -138,13 +138,15 @@ export class DailyTotals {
   readonly goals = input.required<Goals>();
 
   // Per-macro display rows in carbs -> protein -> fat order, each with its own color +
-  // tint token (amber/indigo/rose).
+  // tint token (amber/indigo/rose). `color` paints the dot and bar fill; `text` is the
+  // darker AA-safe tier the label uses (the solid tokens are too light to read as text).
   // Labels go through i18n.t(), so the computed re-runs on a language switch.
   protected readonly macroRows = computed(() => [
     {
       key: 'carbs',
       label: this.i18n.t('diary.carbs'),
       color: 'var(--macro-carbs)',
+      text: 'var(--macro-carbs-text)',
       track: 'var(--macro-carbs-100)',
       value: this.totals().carbs,
       goal: this.goals().carbs,
@@ -153,6 +155,7 @@ export class DailyTotals {
       key: 'protein',
       label: this.i18n.t('diary.protein'),
       color: 'var(--macro-protein)',
+      text: 'var(--macro-protein-text)',
       track: 'var(--macro-protein-100)',
       value: this.totals().protein,
       goal: this.goals().protein,
@@ -161,6 +164,7 @@ export class DailyTotals {
       key: 'fat',
       label: this.i18n.t('diary.fat'),
       color: 'var(--macro-fat)',
+      text: 'var(--macro-fat-text)',
       track: 'var(--macro-fat-100)',
       value: this.totals().fat,
       goal: this.goals().fat,

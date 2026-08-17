@@ -14,13 +14,15 @@ interface MacroMeta {
   kcalPerG: number;
   labelKey: TranslationKey;
   color: string;
+  text: string;
   track: string;
 }
 // Display order is carbs -> protein -> fat, matching the diary bars and every macro readout.
+// `color` strokes the ring, `text` is the darker AA-safe tier for the label and percentage.
 const MACROS: readonly MacroMeta[] = [
-  { key: 'carbs', kcalPerG: 4, labelKey: 'goals.carbs', color: 'var(--macro-carbs)', track: 'var(--macro-carbs-100)' },
-  { key: 'protein', kcalPerG: 4, labelKey: 'goals.protein', color: 'var(--macro-protein)', track: 'var(--macro-protein-100)' },
-  { key: 'fat', kcalPerG: 9, labelKey: 'goals.fat', color: 'var(--macro-fat)', track: 'var(--macro-fat-100)' },
+  { key: 'carbs', kcalPerG: 4, labelKey: 'goals.carbs', color: 'var(--macro-carbs)', text: 'var(--macro-carbs-text)', track: 'var(--macro-carbs-100)' },
+  { key: 'protein', kcalPerG: 4, labelKey: 'goals.protein', color: 'var(--macro-protein)', text: 'var(--macro-protein-text)', track: 'var(--macro-protein-100)' },
+  { key: 'fat', kcalPerG: 9, labelKey: 'goals.fat', color: 'var(--macro-fat)', text: 'var(--macro-fat-text)', track: 'var(--macro-fat-100)' },
 ];
 
 // Goal-ring geometry (66x66 svg, radius 27, stroke 7) — matches the design prototype.
@@ -102,10 +104,10 @@ interface Model {
                       transform="rotate(-90 33 33)"
                     />
                   </svg>
-                  <span class="ring-pct" [style.color]="macro.color">{{ pctOf(macro.key) }}%</span>
+                  <span class="ring-pct" [style.color]="macro.text">{{ pctOf(macro.key) }}%</span>
                 </div>
 
-                <div class="macro-name" [style.color]="macro.color">{{ i18n.t(macro.labelKey) }}</div>
+                <div class="macro-name" [style.color]="macro.text">{{ i18n.t(macro.labelKey) }}</div>
 
                 <div class="macro-input">
                   <input

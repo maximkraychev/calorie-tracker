@@ -56,11 +56,17 @@
   --feedback-danger-bg: var(--color-danger-100);
   --feedback-danger-text: var(--color-danger-700);
 
-  /* Per-macro colors — distinct from the accent (tokens/colors.css). Each has a solid
-     color (dot / label / bar fill / goal ring) and a `-100` tint (bar & ring track). */
-  --macro-protein: #6366f1;   --macro-protein-100: #edeffe;   /* indigo */
-  --macro-carbs: #f59e0b;     --macro-carbs-100: #fef2e0;     /* amber  */
-  --macro-fat: #f43f5e;       --macro-fat-100: #ffe8ed;       /* rose   */
+  /* Per-macro colors — distinct from the accent. App-local: the DS ships no macro palette
+     (its MacroBar paints all three with the accent), so these live here, not in the synced
+     token layer. Each macro has three tiers:
+       solid   — dot, bar fill, goal ring stroke
+       `-100`  — bar & ring track tint
+       `-text` — text only. The solid amber/rose/indigo sit at 2.1–3.7:1 on white, under the
+                 WCAG AA 4.5:1 floor for body text, so anything the user reads uses this
+                 darker tier instead (4.7–6.3:1 on both white and the #f9f7f7 ground). */
+  --macro-carbs: #f59e0b;     --macro-carbs-100: #fef2e0;     --macro-carbs-text: #b45309;    /* amber  */
+  --macro-protein: #6366f1;   --macro-protein-100: #edeffe;   --macro-protein-text: #4f46e5;  /* indigo */
+  --macro-fat: #f43f5e;       --macro-fat-100: #ffe8ed;       --macro-fat-text: #be123c;      /* rose   */
 
   /* ── Typography (tokens/typography.css) ──────────────────── */
   --font-heading: 'Archivo', system-ui, -apple-system, sans-serif;
@@ -263,3 +269,29 @@ input[type='number']::-webkit-inner-spin-button {
   border-radius: var(--radius-pill);
 }
 .tag-neutral { background: var(--color-neutral-100); color: var(--color-neutral-800); }
+
+/* ── Macro identity (App-specific) ───────────────────────── */
+/* Carbs / protein / fat keep the same color in every readout, so a value can be matched to
+   its macro without reading the label — the diary's bars teach the mapping and the rest of
+   the app reuses it. Put `.macro-carbs|-protein|-fat` on an element to bind the color
+   custom properties, then `.macro-pill` on the readout itself.
+
+   The pill is a tinted oval, not a solid one: text on a solid macro color only clears WCAG
+   AA for carbs (indigo and rose fail against both black and white), while the `-100` tint
+   under the `-text` tier clears it for all three (4.5–5.5:1). */
+.macro-carbs { --macro-color: var(--macro-carbs); --macro-tint: var(--macro-carbs-100); --macro-color-text: var(--macro-carbs-text); }
+.macro-protein { --macro-color: var(--macro-protein); --macro-tint: var(--macro-protein-100); --macro-color-text: var(--macro-protein-text); }
+.macro-fat { --macro-color: var(--macro-fat); --macro-tint: var(--macro-fat-100); --macro-color-text: var(--macro-fat-text); }
+
+.macro-pill {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--macro-tint);
+  color: var(--macro-color-text);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}

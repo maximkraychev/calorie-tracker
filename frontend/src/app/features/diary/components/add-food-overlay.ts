@@ -174,9 +174,15 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
               <span class="preview-label">{{ i18n.t('diary.kcal') }}</span>
             </div>
             <div class="preview-macros">
-              <div>{{ i18n.t('diary.carbs') }}&nbsp;{{ round1(preview().carbs) }} g</div>
-              <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round1(preview().protein) }} g</div>
-              <div>{{ i18n.t('diary.fat') }}&nbsp;{{ round1(preview().fat) }} g</div>
+              <div class="macro-carbs macro-pill">
+                {{ i18n.t('diary.carbs') }} {{ round1(preview().carbs) }} g
+              </div>
+              <div class="macro-protein macro-pill">
+                {{ i18n.t('diary.protein') }} {{ round1(preview().protein) }} g
+              </div>
+              <div class="macro-fat macro-pill">
+                {{ i18n.t('diary.fat') }} {{ round1(preview().fat) }} g
+              </div>
             </div>
           </div>
         </div>
@@ -409,30 +415,38 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
       margin-right: auto;
     }
 
+    /* Two fixed rows of three (search / scan / my foods, then recipes / photo / manual)
+       instead of one horizontally scrolling row, which pushed the later methods off-screen
+       and made them easy to miss. Every method is visible and tappable without scrolling. */
     .chips {
       flex: none;
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: var(--space-2);
       padding: var(--space-3);
-      overflow-x: auto;
       border-bottom: 1px solid var(--color-divider);
     }
     .chip {
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex: none;
-      padding: 8px 15px;
+      justify-content: center;
+      gap: 5px;
+      min-width: 0;
+      padding: 9px 8px;
       border-radius: 999px;
       font-family: var(--font-heading);
       font-weight: 800;
-      font-size: 13px;
+      font-size: 12px;
+      line-height: 1.2;
+      text-align: center;
       border: 1px solid var(--color-divider);
       background: var(--color-bg);
       color: var(--color-text);
       cursor: pointer;
-      white-space: nowrap;
     }
+    /* The label may wrap to a second line in a narrow column (Bulgarian "Моите храни");
+       the icon must not shrink when it does. */
+    .chip ct-icon { flex: none; }
     .chip.active {
       background: var(--color-accent);
       color: var(--color-bg);
@@ -624,7 +638,6 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
       border-top: 1px solid var(--color-divider);
       padding-top: var(--space-3);
       font-size: 13px;
-      opacity: 0.9;
     }
 
     .foot {

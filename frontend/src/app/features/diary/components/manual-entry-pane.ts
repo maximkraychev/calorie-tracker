@@ -182,10 +182,18 @@ const NOMINAL_GRAMS = 100;
             <span class="preview-label">{{ i18n.t('diary.kcal') }}</span>
             <span class="text-muted preview-weight">{{ round(portionGrams()) }} g</span>
           </div>
+          <!-- The macro pills live here and nowhere else in this pane: the form above is
+               already a dense grid of typed numbers, so the color belongs on the summary. -->
           <div class="preview-macros">
-            <div>{{ i18n.t('diary.carbs') }}&nbsp;{{ round1(totals().carbs) }} g</div>
-            <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round1(totals().protein) }} g</div>
-            <div>{{ i18n.t('diary.fat') }}&nbsp;{{ round1(totals().fat) }} g</div>
+            <div class="macro-carbs macro-pill">
+              {{ i18n.t('diary.carbs') }} {{ round1(totals().carbs) }} g
+            </div>
+            <div class="macro-protein macro-pill">
+              {{ i18n.t('diary.protein') }} {{ round1(totals().protein) }} g
+            </div>
+            <div class="macro-fat macro-pill">
+              {{ i18n.t('diary.fat') }} {{ round1(totals().fat) }} g
+            </div>
           </div>
           <div class="text-muted preview-per100">
             {{ i18n.t('recipes.per100g') }}: {{ round(per100g().kcalPer100g) }}
@@ -314,7 +322,6 @@ const NOMINAL_GRAMS = 100;
       border-top: 1px solid var(--color-divider);
       padding-top: var(--space-3);
       font-size: 13px;
-      opacity: 0.9;
     }
     .preview-per100 {
       margin-top: var(--space-2);

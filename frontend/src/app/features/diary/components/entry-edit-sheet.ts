@@ -63,16 +63,16 @@ import type { LogEntry } from '../models/diary.models';
             <div class="text-muted cell-label">{{ i18n.t('diary.kcal') }}</div>
             <div class="cell-value big">{{ round(preview().kcal) }}</div>
           </div>
-          <div class="cell">
-            <div class="text-muted cell-label">{{ i18n.t('macro.c') }}</div>
+          <div class="cell macro-carbs">
+            <div class="cell-label macro-pill">{{ i18n.t('macro.c') }}</div>
             <div class="cell-value">{{ round1(preview().carbs) }}</div>
           </div>
-          <div class="cell">
-            <div class="text-muted cell-label">{{ i18n.t('macro.p') }}</div>
+          <div class="cell macro-protein">
+            <div class="cell-label macro-pill">{{ i18n.t('macro.p') }}</div>
             <div class="cell-value">{{ round1(preview().protein) }}</div>
           </div>
-          <div class="cell">
-            <div class="text-muted cell-label">{{ i18n.t('macro.f') }}</div>
+          <div class="cell macro-fat">
+            <div class="cell-label macro-pill">{{ i18n.t('macro.f') }}</div>
             <div class="cell-value">{{ round1(preview().fat) }}</div>
           </div>
         </div>
@@ -145,7 +145,9 @@ import type { LogEntry } from '../models/diary.models';
       margin-bottom: var(--space-4);
     }
     .cell { background: var(--color-surface); padding: var(--space-2); }
-    .cell-label { font-size: 10px; text-transform: uppercase; }
+    .cell-label { font-size: 10px; text-transform: uppercase; font-weight: 700; }
+    /* Tighter than the default pill — these cells only hold a single letter. */
+    .cell-label.macro-pill { padding: 1px 7px; }
     .cell-value { font-family: var(--font-heading); font-weight: 800; font-size: 15px; }
     .cell-value.big { font-size: 17px; }
 

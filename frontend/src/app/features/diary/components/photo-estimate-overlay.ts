@@ -234,9 +234,15 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
                   <span class="item-kcal"
                     >{{ round(macrosOf(item).kcal) }} {{ i18n.t('diary.kcal') }}</span
                   >
-                  <span>{{ i18n.t('diary.carbs') }} {{ round1(macrosOf(item).carbs) }} g</span>
-                  <span>{{ i18n.t('diary.protein') }} {{ round1(macrosOf(item).protein) }} g</span>
-                  <span>{{ i18n.t('diary.fat') }} {{ round1(macrosOf(item).fat) }} g</span>
+                  <span class="macro-carbs macro-pill">
+                    {{ i18n.t('diary.carbs') }} {{ round1(macrosOf(item).carbs) }} g
+                  </span>
+                  <span class="macro-protein macro-pill">
+                    {{ i18n.t('diary.protein') }} {{ round1(macrosOf(item).protein) }} g
+                  </span>
+                  <span class="macro-fat macro-pill">
+                    {{ i18n.t('diary.fat') }} {{ round1(macrosOf(item).fat) }} g
+                  </span>
                 </div>
 
                 @if (item.alternatives.length > 0) {
@@ -321,9 +327,16 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
           <div class="totals">
             <span class="totals-kcal">{{ round(totals().kcal) }}</span>
             <span class="totals-label">{{ i18n.t('photo.total') }}</span>
-            <span class="text-muted totals-macros">
-              {{ round1(totals().carbs) }} / {{ round1(totals().protein) }} /
-              {{ round1(totals().fat) }} g
+            <span class="totals-macros">
+              <span class="macro-carbs macro-pill">
+                {{ i18n.t('diary.carbs') }} {{ round1(totals().carbs) }} g
+              </span>
+              <span class="macro-protein macro-pill">
+                {{ i18n.t('diary.protein') }} {{ round1(totals().protein) }} g
+              </span>
+              <span class="macro-fat macro-pill">
+                {{ i18n.t('diary.fat') }} {{ round1(totals().fat) }} g
+              </span>
             </span>
           </div>
           <button class="btn btn-primary confirm" type="button" (click)="confirm()">
@@ -511,11 +524,13 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
     }
     .item-macros {
       display: flex;
+      align-items: center;
       flex-wrap: wrap;
       gap: var(--space-2) var(--space-3);
       font-size: 12px;
     }
     .item-kcal {
+      font-size: 12px;
       font-weight: 700;
       color: var(--color-text);
     }
@@ -631,16 +646,21 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
       padding: var(--space-3) var(--space-4);
       border-top: 2px solid var(--color-divider);
     }
+    /* Centred column: the calorie total is the headline of the review step, so it sits on
+       its own centred line with the macro pills under it rather than sharing a row. */
     .totals {
       display: flex;
-      align-items: baseline;
-      gap: var(--space-2);
-      margin-bottom: var(--space-2);
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-1);
+      margin-bottom: var(--space-3);
+      text-align: center;
     }
     .totals-kcal {
       font-family: var(--font-heading);
       font-weight: 800;
-      font-size: 26px;
+      font-size: 34px;
+      line-height: 1.1;
     }
     .totals-label {
       font-size: 11px;
@@ -648,8 +668,13 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
       text-transform: uppercase;
       opacity: 0.7;
     }
+    /* Labelled pills are wide — wrap and stay centred rather than overflow the footer on a
+       narrow screen (Bulgarian "Въглехидрати" is the worst case). */
     .totals-macros {
-      margin-left: auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px;
       font-size: 12px;
     }
     .confirm {

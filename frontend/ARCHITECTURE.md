@@ -179,8 +179,58 @@ if the order moves again:
 - `features/diary/components/daily-totals.ts` → `macroRows`
 - `core/layout/goals-sheet.ts` → `MACROS`
 
-Color is bound to the macro, not the position (`--macro-carbs` amber, `--macro-protein`
-indigo, `--macro-fat` rose), so each macro keeps its identity wherever it appears.
+### 3.2 Macro color
+
+Color is bound to the macro, not the position — carbs amber, protein indigo, fat rose —
+and every readout carries it, so a number can be matched to its macro without reading the
+label. The diary's bars teach the mapping; the rest of the app reuses it.
+
+The `--macro-*` tokens are **app-local**, not synced: the design system ships no macro
+palette (its `MacroBar` paints all three with the accent). Each macro has three tiers:
+
+| Tier     | Used for                              |
+| -------- | ------------------------------------- |
+| solid    | dot, bar fill, goal-ring stroke       |
+| `-100`   | bar & ring track tint                 |
+| `-text`  | text — **anything the user reads**    |
+
+The `-text` tier exists for contrast: the solid amber/indigo/rose measure 2.15 / 4.47 /
+3.67:1 on white, all under the WCAG AA 4.5:1 floor for body text. The darker tier
+(`#b45309` / `#4f46e5` / `#be123c`) measures 5.02 / 6.29 / 6.29:1 on white and 4.70 /
+5.89 / 5.89:1 on the `#f9f7f7` ground. **Never color text with a solid `--macro-*` token.**
+
+Readouts wear the color as a **pill** — a tinted oval around the value:
+
+```html
+<div class="macro-carbs macro-pill">Carbs 48 g</div>
+```
+
+Two global helpers in `styles.scss` do this. `.macro-carbs|-protein|-fat` bind
+`--macro-color` / `--macro-tint` / `--macro-color-text`; `.macro-pill` draws the oval,
+filling with the `-100` tint and setting the `-text` foreground (4.5–5.5:1 inside the
+pill). Both classes go on the same element; `.macro-pill` is `inline-flex`, so it hugs its
+text inline and stretches to fill a grid or flex cell.
+
+The fill is a tint rather than the solid macro color because **no single foreground clears
+AA on all three solids** — dark ink passes on amber (6.5:1) but fails on indigo (3.1:1)
+and rose (3.8:1), and white fails on all three. A tint fill sidesteps that entirely.
+
+A pill reads **label then value** (`Carbs 48 g`), never a bare number — color identifies the
+macro, it doesn't replace the label. Avoid `opacity` on a pill: it erodes both the fill and
+the text contrast the tier was chosen for.
+
+Where pills go is a judgement call about density, not a blanket rule:
+
+- **Summaries get them** — the previews in add-food, manual-entry and recipes, meal-detail
+  totals, the photo-estimate item rows and footer, the entry-edit C/P/F cells.
+- **Dense input grids don't.** The manual-entry pane carries pills only on its bottom
+  preview; its four macro inputs keep plain labels, since the form is already a wall of
+  typed numbers. The custom-food and recipe forms do pill their labels — those grids sit on
+  their own in a sheet rather than under a live preview.
+- **Bars and rings don't need them.** The diary totals panel and the goals sheet already
+  paint the macro color into a bar or ring, so they keep the dot + colored label from the
+  design prototype.
+- **Per-100g lines stay plain text** (`30/12/8 g`) — a secondary restatement, not a summary.
 
 ## 4. Routing
 

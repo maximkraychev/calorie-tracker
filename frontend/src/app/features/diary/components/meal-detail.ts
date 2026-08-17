@@ -40,9 +40,15 @@ import type { MealSection } from '../models/diary.models';
             <span class="totals-label">{{ i18n.t('diary.kcal') }} · {{ itemsLabel() }}</span>
           </div>
           <div class="totals-macros">
-            <div>{{ i18n.t('diary.carbs') }}&nbsp;{{ round(totals().carbs) }} g</div>
-            <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round(totals().protein) }} g</div>
-            <div>{{ i18n.t('diary.fat') }}&nbsp;{{ round(totals().fat) }} g</div>
+            <div class="macro-carbs macro-pill">
+              {{ i18n.t('diary.carbs') }} {{ round(totals().carbs) }} g
+            </div>
+            <div class="macro-protein macro-pill">
+              {{ i18n.t('diary.protein') }} {{ round(totals().protein) }} g
+            </div>
+            <div class="macro-fat macro-pill">
+              {{ i18n.t('diary.fat') }} {{ round(totals().fat) }} g
+            </div>
           </div>
         </div>
 
@@ -119,7 +125,6 @@ import type { MealSection } from '../models/diary.models';
       border-top: 1px solid var(--color-divider);
       padding-top: var(--space-3);
       font-size: 13px;
-      opacity: 0.9;
     }
 
     .items-head {

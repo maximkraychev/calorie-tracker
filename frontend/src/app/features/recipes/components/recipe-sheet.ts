@@ -111,8 +111,8 @@ interface RecipeDraft {
                   <p class="field-error">{{ firstError(recipeForm.kcal) }}</p>
                 }
               </div>
-              <div class="field">
-                <label for="rc-carbs">{{ i18n.t('diary.carbs') }}</label>
+              <div class="field macro-carbs">
+                <label for="rc-carbs"><span class="macro-pill">{{ i18n.t('diary.carbs') }}</span></label>
                 <input
                   id="rc-carbs"
                   class="input num"
@@ -124,8 +124,8 @@ interface RecipeDraft {
                   <p class="field-error">{{ firstError(recipeForm.carbs) }}</p>
                 }
               </div>
-              <div class="field">
-                <label for="rc-protein">{{ i18n.t('diary.protein') }}</label>
+              <div class="field macro-protein">
+                <label for="rc-protein"><span class="macro-pill">{{ i18n.t('diary.protein') }}</span></label>
                 <input
                   id="rc-protein"
                   class="input num"
@@ -137,8 +137,8 @@ interface RecipeDraft {
                   <p class="field-error">{{ firstError(recipeForm.protein) }}</p>
                 }
               </div>
-              <div class="field">
-                <label for="rc-fat">{{ i18n.t('diary.fat') }}</label>
+              <div class="field macro-fat">
+                <label for="rc-fat"><span class="macro-pill">{{ i18n.t('diary.fat') }}</span></label>
                 <input
                   id="rc-fat"
                   class="input num"
@@ -222,15 +222,24 @@ interface RecipeDraft {
               <span class="text-muted preview-weight">{{ round(derived().totalWeightG) }} g</span>
             </div>
             <div class="preview-macros">
-              <div>{{ i18n.t('diary.carbs') }}&nbsp;{{ round1(derived().totals.carbs) }} g</div>
-              <div>{{ i18n.t('diary.protein') }}&nbsp;{{ round1(derived().totals.protein) }} g</div>
-              <div>{{ i18n.t('diary.fat') }}&nbsp;{{ round1(derived().totals.fat) }} g</div>
+              <div class="macro-carbs macro-pill">
+                {{ i18n.t('diary.carbs') }} {{ round1(derived().totals.carbs) }} g
+              </div>
+              <div class="macro-protein macro-pill">
+                {{ i18n.t('diary.protein') }} {{ round1(derived().totals.protein) }} g
+              </div>
+              <div class="macro-fat macro-pill">
+                {{ i18n.t('diary.fat') }} {{ round1(derived().totals.fat) }} g
+              </div>
             </div>
             <div class="text-muted preview-per100">
               {{ i18n.t('recipes.per100g') }}: {{ round(derived().per100g.kcalPer100g) }}
-              {{ i18n.t('diary.kcal') }} · {{ round1(derived().per100g.carbsPer100g) }}/{{
+              {{ i18n.t('diary.kcal') }} ·
+              <span class="macro-carbs macro-pill">{{ round1(derived().per100g.carbsPer100g) }}</span>
+              <span class="macro-protein macro-pill">{{
                 round1(derived().per100g.proteinPer100g)
-              }}/{{ round1(derived().per100g.fatPer100g) }} g
+              }}</span>
+              <span class="macro-fat macro-pill">{{ round1(derived().per100g.fatPer100g) }}</span> g
             </div>
           </div>
 
@@ -448,7 +457,6 @@ interface RecipeDraft {
       border-top: 1px solid var(--color-divider);
       padding-top: var(--space-3);
       font-size: 13px;
-      opacity: 0.9;
     }
     .preview-per100 {
       margin-top: var(--space-2);

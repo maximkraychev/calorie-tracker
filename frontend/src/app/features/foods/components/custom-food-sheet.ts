@@ -102,8 +102,8 @@ interface FoodDraft {
                 <p class="field-error">{{ firstError(foodForm.kcal) }}</p>
               }
             </div>
-            <div class="field">
-              <label for="cf-carbs">{{ i18n.t('diary.carbs') }}</label>
+            <div class="field macro-carbs">
+              <label for="cf-carbs"><span class="macro-pill">{{ i18n.t('diary.carbs') }}</span></label>
               <input
                 id="cf-carbs"
                 class="input num"
@@ -115,8 +115,8 @@ interface FoodDraft {
                 <p class="field-error">{{ firstError(foodForm.carbs) }}</p>
               }
             </div>
-            <div class="field">
-              <label for="cf-protein">{{ i18n.t('diary.protein') }}</label>
+            <div class="field macro-protein">
+              <label for="cf-protein"><span class="macro-pill">{{ i18n.t('diary.protein') }}</span></label>
               <input
                 id="cf-protein"
                 class="input num"
@@ -128,8 +128,8 @@ interface FoodDraft {
                 <p class="field-error">{{ firstError(foodForm.protein) }}</p>
               }
             </div>
-            <div class="field">
-              <label for="cf-fat">{{ i18n.t('diary.fat') }}</label>
+            <div class="field macro-fat">
+              <label for="cf-fat"><span class="macro-pill">{{ i18n.t('diary.fat') }}</span></label>
               <input
                 id="cf-fat"
                 class="input num"
