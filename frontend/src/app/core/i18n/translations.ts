@@ -68,6 +68,14 @@ export const en = {
   'addFood.meal': 'Meal',
   'addFood.logFood': 'Log food',
 
+  // Manual entry — totals for the portion eaten, not per-100 g values
+  'addFood.manualNamePlaceholder': 'e.g. Doner kebab',
+  'addFood.manualTotals': 'This portion',
+  'addFood.manualMacrosHint': 'Only calories are required — leave a macro empty for 0.',
+  'addFood.manualWeight': 'Portion weight (optional)',
+  'addFood.manualWeightHint': 'Leave empty if you only know the calories.',
+  'addFood.manualOutOfRange': 'Too much for {n} g. Enter the real portion weight.',
+
   // Barcode scanner
   'scan.title': 'Scan barcode',
   'scan.aim': 'Point the camera at a barcode',
@@ -308,6 +316,13 @@ export const bg: Record<TranslationKey, string> = {
   'addFood.generic': 'Без марка',
   'addFood.meal': 'Хранене',
   'addFood.logFood': 'Запиши храната',
+
+  'addFood.manualNamePlaceholder': 'напр. Дюнер',
+  'addFood.manualTotals': 'Тази порция',
+  'addFood.manualMacrosHint': 'Само калориите са задължителни — празно поле се брои за 0.',
+  'addFood.manualWeight': 'Тегло на порцията (по избор)',
+  'addFood.manualWeightHint': 'Остави празно, ако знаеш само калориите.',
+  'addFood.manualOutOfRange': 'Твърде много за {n} г. Въведи реалното тегло на порцията.',
 
   // Barcode scanner
   'scan.title': 'Сканирай баркод',

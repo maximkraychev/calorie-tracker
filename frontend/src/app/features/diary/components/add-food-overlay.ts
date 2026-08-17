@@ -39,12 +39,14 @@ import { GenericFoodsApi } from '../data/generic-foods.api';
 import {
   MEAL_LABEL_KEYS,
   MEAL_ORDER,
+  type AddFoodPurpose,
   type FoodSource,
   type LogEntry,
   type MealType,
 } from '../models/diary.models';
 import { displayName, type FoodSearchResult } from '../models/food-search.models';
 import { BarcodeScannerOverlay } from './barcode-scanner-overlay';
+import { ManualEntryPane } from './manual-entry-pane';
 import { PhotoEstimateOverlay } from './photo-estimate-overlay';
 
 // Open Food Facts asks clients not to hammer their search (rate-limited per IP), so
@@ -60,7 +62,8 @@ type SearchState =
   | { status: 'empty' }
   | { status: 'error' };
 
-// The Add-Food method chips. Manual entry renders disabled until its flow is built.
+// The Add-Food method chips. All six are live; `enabled` stays because it is what a
+// newly-added, not-yet-built method would set.
 interface AddFoodMode {
   key: string;
   icon: IconName;
@@ -74,23 +77,12 @@ const MODES: readonly AddFoodMode[] = [
   { key: 'myfoods', icon: 'apple', labelKey: 'nav.myFoods', enabled: true },
   { key: 'recipes', icon: 'book', labelKey: 'nav.recipes', enabled: true },
   { key: 'photo', icon: 'sparkles', labelKey: 'addFood.modePhoto', enabled: true },
-  { key: 'manual', icon: 'keyboard', labelKey: 'addFood.modeManual', enabled: false },
+  { key: 'manual', icon: 'keyboard', labelKey: 'addFood.modeManual', enabled: true },
 ];
-
-/**
- * What the overlay is being used for.
- *
- * 'log'  — the diary flow: pick a food, choose a meal and a portion, emit a log entry.
- * 'pick' — the recipe sheet borrows the same overlay to choose an ingredient. There is no
- *          meal to log against, so the meal switcher is hidden and `pickIngredient` is
- *          emitted instead of `log`. Recipes and photo estimates are also hidden: recipes
- *          do not nest, and the photo flow resolves a whole meal straight to the diary.
- */
-export type AddFoodPurpose = 'log' | 'pick';
 
 // The chips that swap the overlay's browse pane. Scan and photo open their own overlays
 // instead, so they are not modes in this sense.
-type BrowseMode = 'search' | 'myfoods' | 'recipes';
+type BrowseMode = 'search' | 'myfoods' | 'recipes' | 'manual';
 
 const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
 
@@ -99,7 +91,7 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
 // preview). Presentational like the other diary overlays — logging is emitted up.
 @Component({
   selector: 'ct-add-food-overlay',
-  imports: [Icon, BarcodeScannerOverlay, PhotoEstimateOverlay],
+  imports: [Icon, BarcodeScannerOverlay, ManualEntryPane, PhotoEstimateOverlay],
   template: `
     <div class="overlay">
       <header class="head">
@@ -312,7 +304,7 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
               }
             }
           </div>
-        } @else {
+        } @else if (browseMode() === 'recipes') {
           <!-- Recipes: browsed and filtered client-side, exactly like My Foods above. -->
           <div class="body">
             @switch (recipesStore.status()) {
@@ -363,6 +355,15 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
               }
             }
           </div>
+        } @else {
+          <!-- Manual: a self-contained form, so it emits the finished entry itself rather
+               than handing a food to the portion step above. -->
+          <ct-manual-entry-pane
+            [purpose]="purpose()"
+            [meal]="meal()"
+            (log)="log.emit($event)"
+            (pickIngredient)="pickIngredient.emit($event)"
+          />
         }
       }
 
@@ -804,7 +805,12 @@ export class AddFoodOverlay {
   protected onModeClick(mode: AddFoodMode): void {
     if (mode.key === 'scan') this.scannerOpen.set(true);
     else if (mode.key === 'photo') this.photoOpen.set(true);
-    else if (mode.key === 'search' || mode.key === 'myfoods' || mode.key === 'recipes') {
+    else if (
+      mode.key === 'search' ||
+      mode.key === 'myfoods' ||
+      mode.key === 'recipes' ||
+      mode.key === 'manual'
+    ) {
       this.browseMode.set(mode.key);
       // Deferred to the first open of each pane, so an Add-Food that only ever searches
       // requests neither list.

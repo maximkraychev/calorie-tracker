@@ -42,6 +42,19 @@ export interface LogEntry extends Portion {
   recipeId: string | null;
 }
 
+/**
+ * What the Add-Food overlay is being used for.
+ *
+ * 'log'  — the diary flow: pick a food, choose a meal and a portion, emit a log entry.
+ * 'pick' — the recipe sheet borrows the same overlay to choose an ingredient. There is no
+ *          meal to log against, so the meal switcher is hidden and `pickIngredient` is
+ *          emitted instead of `log`. Recipes and photo estimates are also hidden: recipes
+ *          do not nest, and the photo flow resolves a whole meal straight to the diary.
+ *
+ * Lives here rather than on the overlay because the panes inside it read it too.
+ */
+export type AddFoodPurpose = 'log' | 'pick';
+
 // A meal's entries plus its kcal subtotal — the shape the diary page renders per section.
 export interface MealSection {
   type: MealType;
