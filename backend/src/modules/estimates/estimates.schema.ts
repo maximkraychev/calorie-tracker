@@ -10,9 +10,4 @@ export const analyzeBodySchema = z.object({
   locale: z.enum(['bg', 'en']).default('en'),
 });
 
-// GET /api/estimates/foods?q= — the FDC proxy behind the "add a missing item" search.
-export const foodSearchQuerySchema = z.object({
-  q: z.string().trim().min(2).max(100),
-});
-
 export type AnalyzeBody = z.infer<typeof analyzeBodySchema>;

@@ -4,7 +4,7 @@ import multer from 'multer';
 
 import { requireAuth } from '../../middleware/require-auth.js';
 import { AppError } from '../../utils/app-error.js';
-import { analyzePhoto, searchFoods } from './estimates.controller.js';
+import { analyzePhoto } from './estimates.controller.js';
 
 // The client already downscales to ~1024px / JPEG q0.85, which lands well under 1 MB.
 // The cap is headroom for an un-processed upload, not the expected size.
@@ -53,6 +53,3 @@ export const estimatesRouter = Router();
 estimatesRouter.use(requireAuth);
 
 estimatesRouter.post('/photo', uploadPhoto, analyzePhoto);
-// Not mounted under /api/foods: ARCHITECTURE.md §4.2 reserves that for the user's own
-// custom-foods CRUD. This is an FDC proxy, and the key must stay server-side.
-estimatesRouter.get('/foods', searchFoods);

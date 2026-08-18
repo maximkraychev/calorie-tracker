@@ -13,7 +13,6 @@ import {
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import {
   catchError,
-  combineLatest,
   debounceTime,
   distinctUntilChanged,
   map,
@@ -34,8 +33,7 @@ import {
   type NewRecipeIngredient,
   type Recipe,
 } from '../../recipes/models/recipe.models';
-import { FoodSearchApi } from '../data/food-search.api';
-import { GenericFoodsApi } from '../data/generic-foods.api';
+import { FoodCatalogSearch } from '../data/food-catalog.search';
 import {
   MEAL_LABEL_KEYS,
   MEAL_ORDER,
@@ -654,8 +652,9 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
 })
 export class AddFoodOverlay {
   protected readonly i18n = inject(I18n);
-  private readonly api = inject(FoodSearchApi);
-  private readonly genericApi = inject(GenericFoodsApi);
+  // Both food catalogs behind one call — shared with the photo estimate's
+  // add-ingredient field so the two searches can never drift apart.
+  private readonly catalog = inject(FoodCatalogSearch);
   // Root-provided, so the catalog the My Foods page already loaded is reused here.
   protected readonly foods = inject(FoodsStore);
   // Same deal for recipes — the Recipes tab and this pane share one loaded copy.
@@ -711,10 +710,6 @@ export class AddFoodOverlay {
   // scan is distinguishable from a text-search pick.
   private readonly selectedSource = signal<FoodSource>('search');
 
-  // Session cache: settled query → mapped results. Serves repeats (and back-and-forth
-  // typing) without re-hitting OFF. Errors are not cached, so retry re-requests.
-  private readonly cache = new Map<string, FoodSearchResult[]>();
-
   private readonly searchKey = computed(() => ({
     query: this.queryText().trim(),
     lang: this.i18n.lang(),
@@ -729,22 +724,9 @@ export class AddFoodOverlay {
       distinctUntilChanged((a, b) => a.query === b.query && a.lang === b.lang && a.tick === b.tick),
       switchMap(({ query, lang }) => {
         if (query.length < MIN_QUERY_LENGTH) return of<SearchState>({ status: 'idle' });
-        const cacheKey = `${lang}:${query.toLowerCase()}`;
-        const cached = this.cache.get(cacheKey);
-        if (cached) return of(toState(cached));
-        // Both catalogs in parallel, and neither is allowed to sink the other: Open
-        // Food Facts is a third party that rate-limits and 503s, and our own endpoint
-        // sits on a free instance that cold-starts. A failed source contributes an
-        // empty list, so the surviving one still renders.
-        return combineLatest([
-          this.genericApi.search(query).pipe(catchError(() => of<FoodSearchResult[]>([]))),
-          this.api.search(query, lang).pipe(catchError(() => of<FoodSearchResult[]>([]))),
-        ]).pipe(
-          map(([generic, off]) => {
-            const results = mergeResults(generic, off, query);
-            this.cache.set(cacheKey, results);
-            return toState(results);
-          }),
+        return this.catalog.search(query, lang).pipe(
+          map(toState),
+          catchError(() => of<SearchState>({ status: 'error' })),
           startWith<SearchState>({ status: 'loading' }),
         );
       }),
@@ -959,38 +941,4 @@ export class AddFoodOverlay {
 
 function toState(results: FoodSearchResult[]): SearchState {
   return results.length > 0 ? { status: 'results', results } : { status: 'empty' };
-}
-
-// A token only a packaged product would carry: a digit ("coca cola 330") or a unit of
-// packaging. Their presence says the user wants a specific product, not an ingredient.
-//
-// The word boundaries are load-bearing. Without them the single-letter alternatives
-// match inside ordinary words — "l" hits app(l)e, mi(l)k and sa(l)t — so every fruit
-// query would be misread as a brand search and answered by Open Food Facts first.
-const BRAND_HINT = /\d|\b(ml|l|g|kg|oz|pack|bar|bio|zero|light|max)\b/i;
-
-/**
- * Interleave the two catalogs.
- *
- * The query itself says which one the user meant. "banana" or "chicken breast" is an
- * ingredient — the whole-food catalog answers it well and OFF answers it with
- * banana-flavoured cereal bars. Anything longer, or carrying a digit or a packaging
- * word, is someone looking for a product on a shelf, and OFF is the better first answer.
- *
- * The loser is appended rather than dropped: both lists stay reachable by scrolling, so
- * a wrong guess costs the user a scroll instead of a re-query.
- */
-function mergeResults(
-  generic: FoodSearchResult[],
-  off: FoodSearchResult[],
-  query: string,
-): FoodSearchResult[] {
-  const words = query.trim().split(/\s+/).filter(Boolean);
-  const wholeFoodQuery = words.length <= 2 && !BRAND_HINT.test(query);
-
-  const ordered = wholeFoodQuery ? [...generic, ...off] : [...off, ...generic];
-
-  // `code` is namespaced per source, so this only removes a genuine repeat within one.
-  const seen = new Set<string>();
-  return ordered.filter((result) => !seen.has(result.code) && seen.add(result.code));
 }

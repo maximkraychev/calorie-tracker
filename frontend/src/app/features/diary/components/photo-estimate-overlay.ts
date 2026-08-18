@@ -23,14 +23,16 @@ import { I18n } from '../../../core/i18n/i18n';
 import type { TranslationKey } from '../../../core/i18n/translations';
 import { Icon } from '../../../shared/ui/icon';
 import { macrosOf, round, round1, sumMacros } from '../../../shared/utils/nutrition.utils';
+import { FoodCatalogSearch } from '../data/food-catalog.search';
 import { PhotoEstimateApi } from '../data/photo-estimate.api';
 import { preparePhoto } from '../data/image-prep';
 import { MEAL_LABEL_KEYS, MEAL_ORDER, type LogEntry, type MealType } from '../models/diary.models';
-import type { EstimateAlternative, EstimateItem } from '../models/photo-estimate.models';
+import { displayName, type FoodSearchResult } from '../models/food-search.models';
+import type { EstimateItem } from '../models/photo-estimate.models';
 
-// Every USDA search costs a request against a 1000/hour budget, so the manual "add an
-// ingredient" field waits for a typing pause and ignores near-empty queries — the same
-// discipline add-food-overlay applies to Open Food Facts.
+// Open Food Facts rate-limits per IP, so the "add an ingredient" field waits for a
+// typing pause and ignores near-empty queries — the same discipline, and the same
+// numbers, as the Add-Food search it now shares a catalog with.
 const DEBOUNCE_MS = 500;
 const MIN_QUERY_LENGTH = 3;
 
@@ -39,11 +41,19 @@ const GRAMS_STEP = 10;
 type Phase = 'capture' | 'working' | 'review' | 'error';
 
 /**
+ * One row in the review list. Rows the model produced carry no `picked`; rows the user
+ * added from the food search carry the catalog hit they came from, because that — not
+ * the photo — is where their nutrition and their provenance come from, and the diary
+ * entry has to say so.
+ */
+type ReviewItem = EstimateItem & { picked?: FoodSearchResult };
+
+/**
  * Photo → editable ingredient list → diary (z 60, opened from the Add-Food overlay).
  *
  * After the analysis returns, everything is local arithmetic: the response carries
- * per-100g values for every item, so changing grams, swapping a match, or deleting a row
- * never touches the network. Only Confirm writes anything.
+ * per-100g values for every item, so changing grams or deleting a row never touches the
+ * network. The add-ingredient search is the one exception, and only Confirm writes.
  */
 @Component({
   selector: 'ct-photo-estimate-overlay',
@@ -194,13 +204,24 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
                   </button>
                 </div>
 
-                @if (item.unresolved) {
-                  <p class="unresolved">
-                    <ct-icon name="alert" [size]="14" />
-                    <span class="badge">{{ i18n.t('photo.unresolved') }}</span>
+                <!-- Every item says where its macros came from, so a database fact and a
+                     model guess are never mistaken for one another. -->
+                <p class="source">
+                  @if (item.unresolved) {
+                    <span class="badge badge-ai">
+                      <ct-icon name="sparkles" [size]="12" />
+                      {{ i18n.t('photo.sourceAi') }}
+                    </span>
                     {{ i18n.t('photo.unresolvedHint') }}
-                  </p>
-                }
+                  } @else {
+                    <!-- Badge only: repeating the same sentence on every resolved row is
+                         noise, so the explanation lives on the tooltip. -->
+                    <span class="badge badge-db" [title]="i18n.t('photo.sourceDbHint')">
+                      <ct-icon name="check" [size]="12" />
+                      {{ i18n.t(sourceKey(item)) }}
+                    </span>
+                  }
+                </p>
 
                 <div class="stepper">
                   <button
@@ -244,25 +265,6 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
                     {{ i18n.t('diary.fat') }} {{ round1(macrosOf(item).fat) }} g
                   </span>
                 </div>
-
-                @if (item.alternatives.length > 0) {
-                  @if (swapForId() === item.id) {
-                    <div class="alts" role="group" [attr.aria-label]="i18n.t('photo.swapTitle')">
-                      @for (alt of item.alternatives; track alt.fdcId) {
-                        <button class="alt" type="button" (click)="swapTo(item.id, alt)">
-                          <span class="alt-name">{{ alt.name }}</span>
-                          <span class="text-muted alt-meta">
-                            {{ round(alt.kcalPer100g) }} {{ i18n.t('entry.kcalPer100') }}
-                          </span>
-                        </button>
-                      }
-                    </div>
-                  } @else {
-                    <button class="btn btn-ghost swap" type="button" (click)="openSwap(item.id)">
-                      {{ i18n.t('photo.swap') }}
-                    </button>
-                  }
-                }
               </div>
             }
 
@@ -280,6 +282,11 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
               />
             </div>
             @switch (addSearch().status) {
+              @case ('idle') {
+                <p class="text-muted note-line">
+                  {{ i18n.t('addFood.minChars', { n: minQuery }) }}
+                </p>
+              }
               @case ('loading') {
                 <div
                   class="spinner"
@@ -292,14 +299,15 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
               }
               @case ('error') {
                 <p class="text-muted note-line">{{ i18n.t('addFood.error') }}</p>
+                <button class="btn btn-secondary" type="button" (click)="retry()">
+                  {{ i18n.t('addFood.retry') }}
+                </button>
               }
               @case ('results') {
-                @for (food of addResults(); track food.fdcId) {
+                @for (food of addResults(); track food.code) {
                   <button class="alt" type="button" (click)="addFood(food)">
-                    <span class="alt-name">{{ food.name }}</span>
-                    <span class="text-muted alt-meta">
-                      {{ round(food.kcalPer100g) }} {{ i18n.t('entry.kcalPer100') }}
-                    </span>
+                    <span class="alt-name">{{ resultName(food) }}</span>
+                    <span class="text-muted alt-meta">{{ resultMeta(food) }}</span>
                   </button>
                 }
               }
@@ -489,8 +497,8 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
       font-size: 15px;
     }
 
-    /* Unverified numbers must not read as database facts — hence the dashed badge. */
-    .unresolved {
+    /* Provenance line: which source the per-100g numbers came from. */
+    .source {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
@@ -500,12 +508,25 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
       margin: 0 0 var(--space-2);
     }
     .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       padding: 2px 8px;
       border-radius: 999px;
       font-family: var(--font-heading);
       font-weight: 800;
       font-size: 11px;
-      border: 1px dashed var(--color-text-muted);
+      border: 1px solid transparent;
+    }
+    /* Solid tint = a database fact. */
+    .badge-db {
+      background: var(--color-accent-100);
+      color: var(--accent-on-light);
+    }
+    /* Dashed and untinted = the model's own guess, deliberately not styled as data. */
+    .badge-ai {
+      border-color: var(--color-text-muted);
+      border-style: dashed;
     }
 
     .stepper {
@@ -533,10 +554,6 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
       font-size: 12px;
       font-weight: 700;
       color: var(--color-text);
-    }
-    .swap,
-    .alts {
-      margin-top: var(--space-2);
     }
 
     .alt {
@@ -695,6 +712,9 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
 export class PhotoEstimateOverlay {
   protected readonly i18n = inject(I18n);
   private readonly api = inject(PhotoEstimateApi);
+  // The same search the Add-Food pane uses, so an ingredient the model missed is looked
+  // up in exactly the catalogs the user already knows from there.
+  private readonly catalog = inject(FoodCatalogSearch);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly round = round;
@@ -703,6 +723,7 @@ export class PhotoEstimateOverlay {
   protected readonly mealOrder = MEAL_ORDER;
   protected readonly mealLabelKeys = MEAL_LABEL_KEYS;
   protected readonly gramsStep = GRAMS_STEP;
+  protected readonly minQuery = MIN_QUERY_LENGTH;
   protected readonly skeletonRows = [0, 1, 2];
 
   /** The meal whose "+" opened Add-Food — the default target for the logged items. */
@@ -721,39 +742,46 @@ export class PhotoEstimateOverlay {
   protected readonly errorKey = signal<TranslationKey>('photo.error');
 
   /** The editable working copy — the analysis response is never mutated in place. */
-  protected readonly items = signal<EstimateItem[]>([]);
+  protected readonly items = signal<ReviewItem[]>([]);
   protected readonly scaleReference = signal<string | null>(null);
   protected readonly hiddenFatsNote = signal<string | null>(null);
   protected readonly clarifyingQuestion = signal<string | null>(null);
-  protected readonly swapForId = signal<string | null>(null);
 
   protected readonly addQuery = signal('');
+  private readonly retryTick = signal(0);
+
+  private readonly searchKey = computed(() => ({
+    query: this.addQuery().trim(),
+    lang: this.i18n.lang(),
+    tick: this.retryTick(),
+  }));
 
   protected readonly totals = computed(() => sumMacros(this.items()));
   protected readonly canAnalyze = computed(() => this.photo() !== null);
 
-  // Debounced USDA search for the manual-add field. `switchMap` drops in-flight requests
-  // when the query moves on, so a fast typist only pays for the query they settle on.
+  // The same debounced two-catalog search the Add-Food pane runs — whole foods from our
+  // own USDA-seeded table (which carries Bulgarian names) merged with Open Food Facts.
+  // `switchMap` drops in-flight requests when the query moves on, so a fast typist only
+  // pays for the query they settle on.
   protected readonly addSearch = toSignal(
-    toObservable(this.addQuery).pipe(
+    toObservable(this.searchKey).pipe(
       debounceTime(DEBOUNCE_MS),
-      distinctUntilChanged(),
-      switchMap((raw) => {
-        const query = raw.trim();
-        if (query.length < MIN_QUERY_LENGTH) return of({ status: 'idle' } as AddSearchState);
-        return this.api.searchFoods(query).pipe(
+      distinctUntilChanged((a, b) => a.query === b.query && a.lang === b.lang && a.tick === b.tick),
+      switchMap(({ query, lang }) => {
+        if (query.length < MIN_QUERY_LENGTH) return of<AddSearchState>({ status: 'idle' });
+        return this.catalog.search(query, lang).pipe(
           map((results): AddSearchState =>
             results.length > 0 ? { status: 'results', results } : { status: 'empty' },
           ),
-          catchError(() => of({ status: 'error' } as AddSearchState)),
-          startWith({ status: 'loading' } as AddSearchState),
+          catchError(() => of<AddSearchState>({ status: 'error' })),
+          startWith<AddSearchState>({ status: 'loading' }),
         );
       }),
     ),
     { initialValue: { status: 'idle' } as AddSearchState },
   );
 
-  protected readonly addResults = computed<EstimateAlternative[]>(() => {
+  protected readonly addResults = computed<FoodSearchResult[]>(() => {
     const state = this.addSearch();
     return state.status === 'results' ? state.results : [];
   });
@@ -805,7 +833,6 @@ export class PhotoEstimateOverlay {
         this.scaleReference.set(estimate.scaleReferenceUsed);
         this.hiddenFatsNote.set(estimate.hiddenFatsNote);
         this.clarifyingQuestion.set(estimate.clarifyingQuestion);
-        this.swapForId.set(null);
         this.phase.set('review');
       },
       error: () => {
@@ -847,44 +874,48 @@ export class PhotoEstimateOverlay {
     this.items.update((items) => items.filter((item) => item.id !== id));
   }
 
-  protected openSwap(id: string): void {
-    this.swapForId.set(id);
-  }
-
-  // Swapping keeps the user's grams and the alternatives list, so the choice stays
-  // reversible — only the identity and the per-100g values change.
-  protected swapTo(id: string, alt: EstimateAlternative): void {
-    this.updateItem(id, (item) => ({
-      ...item,
-      displayName: alt.name,
-      fdcId: alt.fdcId,
-      unresolved: false,
-      kcalPer100g: alt.kcalPer100g,
-      proteinPer100g: alt.proteinPer100g,
-      carbsPer100g: alt.carbsPer100g,
-      fatPer100g: alt.fatPer100g,
-    }));
-    this.swapForId.set(null);
-  }
-
-  protected addFood(food: EstimateAlternative): void {
+  protected addFood(food: FoodSearchResult): void {
     this.items.update((items) => [
       ...items,
       {
         id: `manual-${crypto.randomUUID()}`,
-        displayName: food.name,
+        // The catalog's name for the active language — a generic food carries a
+        // Bulgarian one, and this is also the name the diary entry will keep.
+        displayName: displayName(food, this.i18n.lang()),
         grams: 100,
+        // Nothing here was estimated: the user picked this row from the database.
         confidence: 'high',
         unresolved: false,
-        fdcId: food.fdcId,
+        fdcId: null,
+        picked: food,
         kcalPer100g: food.kcalPer100g,
         proteinPer100g: food.proteinPer100g,
         carbsPer100g: food.carbsPer100g,
         fatPer100g: food.fatPer100g,
-        alternatives: [],
       },
     ]);
     this.addQuery.set('');
+  }
+
+  protected retry(): void {
+    this.retryTick.update((tick) => tick + 1);
+  }
+
+  /** The label for a row's source badge — where its per-100g numbers actually came from. */
+  protected sourceKey(item: ReviewItem): TranslationKey {
+    if (item.picked) return item.picked.source === 'generic' ? 'photo.sourceDb' : 'photo.sourceOff';
+    return item.unresolved ? 'photo.sourceAi' : 'photo.sourceDb';
+  }
+
+  /** A hit's name in the active language — generic foods carry a Bulgarian one. */
+  protected resultName(result: FoodSearchResult): string {
+    return displayName(result, this.i18n.lang());
+  }
+
+  /** One search hit's secondary line: brand (or "generic") and its energy. */
+  protected resultMeta(result: FoodSearchResult): string {
+    const brand = result.brand ?? this.i18n.t('addFood.generic');
+    return `${brand} · ${round(result.kcalPer100g)} ${this.i18n.t('entry.kcalPer100')}`;
   }
 
   protected confirm(): void {
@@ -896,11 +927,17 @@ export class PhotoEstimateOverlay {
       .map((item) => ({
         mealType: meal,
         name: item.displayName,
-        brand: null,
-        source: 'ai' as const,
-        // Provenance only, and only when USDA actually resolved it.
-        externalId: item.fdcId === null ? null : String(item.fdcId),
-        // An estimate never comes from the user's own catalog or recipes.
+        brand: item.picked?.brand ?? null,
+        // A row the user picked from the search was not estimated from the photo, and
+        // must not be logged as though it were — it keeps the catalog's own source.
+        source: item.picked ? item.picked.source : ('ai' as const),
+        // Provenance: the catalog hit's namespaced code, or the resolved USDA id.
+        externalId: item.picked
+          ? item.picked.code
+          : item.fdcId === null
+            ? null
+            : String(item.fdcId),
+        // Neither an estimate nor this search reaches the user's own catalog or recipes.
         customFoodId: null,
         recipeId: null,
         grams: item.grams,
@@ -913,7 +950,7 @@ export class PhotoEstimateOverlay {
     if (entries.length > 0) this.log.emit(entries);
   }
 
-  private updateItem(id: string, update: (item: EstimateItem) => EstimateItem): void {
+  private updateItem(id: string, update: (item: ReviewItem) => ReviewItem): void {
     this.items.update((items) => items.map((item) => (item.id === id ? update(item) : item)));
   }
 
@@ -926,6 +963,6 @@ export class PhotoEstimateOverlay {
 type AddSearchState =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'results'; results: EstimateAlternative[] }
+  | { status: 'results'; results: FoodSearchResult[] }
   | { status: 'empty' }
   | { status: 'error' };

@@ -8,12 +8,6 @@ import type { AnalyzeBody } from './estimates.schema.js';
 // items are returned, edited in the browser, and only the user's confirmed choices reach
 // the database — as ordinary diary entries with source 'ai'.
 
-export interface EstimateAlternative {
-  fdcId: number;
-  name: string;
-  per100g: Per100g;
-}
-
 export interface EstimateItem {
   /** Stable within one response only — a client-side list key, not an entity id. */
   id: string;
@@ -25,8 +19,6 @@ export interface EstimateItem {
   fdcId: number | null;
   /** Present on every item, which is what lets the client recompute edits with no network. */
   per100g: Per100g;
-  /** Other FDC matches for the same term — powers "swap this food" without a round trip. */
-  alternatives: EstimateAlternative[];
 }
 
 export interface PhotoEstimate {
@@ -102,7 +94,7 @@ async function resolveItem(item: VisionItem, index: number): Promise<EstimateIte
     );
   }
 
-  const [best, ...rest] = matches;
+  const [best] = matches;
   if (!best) {
     logger.warn({ searchTerm: item.searchTerm }, 'No FDC match — item is unresolved');
     return {
@@ -110,7 +102,6 @@ async function resolveItem(item: VisionItem, index: number): Promise<EstimateIte
       unresolved: true,
       fdcId: null,
       per100g: item.fallbackPer100g,
-      alternatives: [],
     };
   }
 
@@ -119,13 +110,7 @@ async function resolveItem(item: VisionItem, index: number): Promise<EstimateIte
     unresolved: false,
     fdcId: best.fdcId,
     per100g: best.per100g,
-    alternatives: rest,
   };
-}
-
-/** GET /api/estimates/foods?q= — manual add for anything the model missed. */
-export async function searchFoods(query: string): Promise<EstimateAlternative[]> {
-  return searchFdc(query);
 }
 
 function round2(value: number): number {

@@ -1,16 +1,10 @@
-import type { Per100g, Portion } from '../../../shared/utils/nutrition.utils';
+import type { Portion } from '../../../shared/utils/nutrition.utils';
 
 // Shapes for the AI photo-estimate flow. Like every other food shape in the app,
 // nutrition is stored per 100 g and combined with grams — so `EstimateItem` is a
 // `Portion` and `macrosOf(item)` works on it directly, with no conversion step.
 
 export type EstimateConfidence = 'high' | 'medium' | 'low';
-
-/** Another USDA match for the same ingredient — the "swap this food" options. */
-export interface EstimateAlternative extends Per100g {
-  fdcId: number;
-  name: string;
-}
 
 export interface EstimateItem extends Portion {
   /** Unique within one estimate only — a list key, not a persisted id. */
@@ -23,7 +17,6 @@ export interface EstimateItem extends Portion {
    */
   unresolved: boolean;
   fdcId: number | null;
-  alternatives: EstimateAlternative[];
 }
 
 export interface PhotoEstimate {

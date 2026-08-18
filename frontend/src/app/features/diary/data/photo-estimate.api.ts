@@ -5,7 +5,6 @@ import { map, type Observable } from 'rxjs';
 import { API_BASE_URL } from '../../../core/api/api.config';
 import type { Language } from '../../../core/i18n/translations';
 import type {
-  EstimateAlternative,
   EstimateConfidence,
   EstimateItem,
   PhotoEstimate,
@@ -26,12 +25,6 @@ interface Per100gDto {
   fat: number;
 }
 
-interface AlternativeDto {
-  fdcId: number;
-  name: string;
-  per100g: Per100gDto;
-}
-
 interface EstimateItemDto {
   id: string;
   displayName: string;
@@ -40,7 +33,6 @@ interface EstimateItemDto {
   unresolved: boolean;
   fdcId: number | null;
   per100g: Per100gDto;
-  alternatives: AlternativeDto[];
 }
 
 interface PhotoEstimateDto {
@@ -69,13 +61,6 @@ export class PhotoEstimateApi {
 
     return this.http.post<PhotoEstimateDto>(`${this.base}/photo`, form).pipe(map(toEstimate));
   }
-
-  /** USDA search, for adding an ingredient the model missed. Debounce the caller. */
-  searchFoods(query: string): Observable<EstimateAlternative[]> {
-    return this.http
-      .get<AlternativeDto[]>(`${this.base}/foods`, { params: { q: query } })
-      .pipe(map((foods) => foods.map(toAlternative)));
-  }
 }
 
 function toEstimate(dto: PhotoEstimateDto): PhotoEstimate {
@@ -97,12 +82,7 @@ function toItem(dto: EstimateItemDto): EstimateItem {
     unresolved: dto.unresolved,
     fdcId: dto.fdcId,
     ...flatten(dto.per100g),
-    alternatives: dto.alternatives.map(toAlternative),
   };
-}
-
-function toAlternative(dto: AlternativeDto): EstimateAlternative {
-  return { fdcId: dto.fdcId, name: dto.name, ...flatten(dto.per100g) };
 }
 
 function flatten(per100g: Per100gDto) {
