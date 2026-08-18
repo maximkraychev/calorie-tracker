@@ -186,7 +186,7 @@ interface FoodDraft {
     }
     .sheet {
       background: var(--color-bg);
-      padding: var(--space-4);
+      padding: var(--space-4) var(--space-4) var(--space-safe-bottom);
       border-top: 2px solid var(--color-accent);
       border-radius: 22px 22px 0 0;
       animation: ct-sheet 0.22s ease;

@@ -99,7 +99,12 @@ import type { MealSection } from '../models/diary.models';
     }
     .title-date { font-size: 11px; }
 
-    .body { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-4) 40px; }
+    /* The "add food" button ends the scroll, so the bottom pad keeps it off the screen edge. */
+    .body {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-4) var(--space-4) max(var(--space-8), var(--space-safe-bottom));
+    }
     .totals {
       background: var(--color-surface);
       color: var(--color-text);

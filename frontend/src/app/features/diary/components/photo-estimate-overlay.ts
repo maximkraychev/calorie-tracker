@@ -643,7 +643,7 @@ type Phase = 'capture' | 'working' | 'review' | 'error';
 
     .foot {
       flex: none;
-      padding: var(--space-3) var(--space-4);
+      padding: var(--space-3) var(--space-4) var(--space-safe-bottom);
       border-top: 2px solid var(--color-divider);
     }
     /* Centred column: the calorie total is the headline of the review step, so it sits on

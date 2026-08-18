@@ -642,7 +642,7 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
 
     .foot {
       flex: none;
-      padding: var(--space-3) var(--space-4);
+      padding: var(--space-3) var(--space-4) var(--space-safe-bottom);
       border-top: 2px solid var(--color-divider);
     }
     .confirm {

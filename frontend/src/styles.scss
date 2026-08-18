@@ -103,6 +103,11 @@
   --space-8: 40px;
   --space-9: 56px;
 
+  /* Breathing room under a bottom-anchored action (a sheet's save button, an overlay's
+     confirm footer). Those sit at the very bottom of the screen, so they need to clear the
+     iPhone home indicator in standalone mode and still keep a visible gap without one. */
+  --space-safe-bottom: max(var(--space-5), calc(env(safe-area-inset-bottom) + var(--space-3)));
+
   /* ── Elevation (tokens/elevation.css) ────────────────────── */
   --radius-sm: 8px;
   --radius-md: 12px;
