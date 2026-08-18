@@ -256,7 +256,7 @@ export const bg: Record<TranslationKey, string> = {
   // App / shell
   'app.name': 'Калориен Тракер',
   'nav.diary': 'Дневник',
-  'nav.myFoods': 'Моите храни',
+  'nav.myFoods': 'Храни',
   'nav.recipes': 'Рецепти',
   'account.title': 'Профил',
   'account.signedIn': 'Влязъл в профила',
