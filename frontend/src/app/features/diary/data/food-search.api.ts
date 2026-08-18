@@ -52,7 +52,8 @@ export class FoodSearchApi {
       lc: lang,
       // Most-scanned products first — the closest thing v1 has to relevance.
       sort_by: 'unique_scans_n',
-      fields: 'code,product_name,brands,nova_group,nutriments,nutriments_estimated',
+      fields:
+        'code,product_name,brands,nova_group,nutriments,nutriments_estimated,image_front_small_url,image_small_url',
     };
     return this.http
       .get<SearchResponse>(environment.off.searchUrl, { params, headers: this.headers })

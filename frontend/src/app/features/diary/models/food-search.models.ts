@@ -43,6 +43,12 @@ export interface FoodSearchResult extends Per100g {
    * what the diary POST sends, and the server derives the snapshot from the recipe.
    */
   recipeId?: string | null;
+  /**
+   * Front-of-pack photo, for Open Food Facts results that have one (`source: 'search'`
+   * and barcode scans). Null everywhere else — our own catalogs store no images. Shown
+   * as a thumbnail only; nothing persists it, so a logged entry keeps no picture.
+   */
+  imageUrl?: string | null;
   /** Serving size in grams, when the source publishes one. */
   servingSizeG?: number | null;
   /** Household measures, offered as grams presets. Generic foods only. */

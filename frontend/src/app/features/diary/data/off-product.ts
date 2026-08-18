@@ -16,6 +16,12 @@ export interface Product {
   nova_group?: number;
   nutriments?: Nutriments;
   nutriments_estimated?: Nutriments;
+  // Front-of-pack photo, when the product has one. OFF publishes every image in several
+  // sizes; we ask only for the 200px ones, which is more than the thumbnail needs and a
+  // fraction of the full-size download. `image_front_*` is the explicitly front-facing
+  // shot, `image_small_url` whichever image the product has selected as its main one.
+  image_front_small_url?: string;
+  image_small_url?: string;
 }
 
 // Normalize an OFF product to the app's per-100g shape. Products without a usable name,
@@ -31,6 +37,7 @@ export function toResult(product: Product): FoodSearchResult | null {
     // OFF has no Bulgarian catalog of its own; `lc` already localizes `product_name`,
     // so there is no second name to carry.
     source: 'search',
+    imageUrl: product.image_front_small_url ?? product.image_small_url ?? null,
     kcalPer100g: nutriments['energy-kcal_100g']!,
     proteinPer100g: nutriments['proteins_100g'] ?? 0,
     carbsPer100g: nutriments['carbohydrates_100g'] ?? 0,

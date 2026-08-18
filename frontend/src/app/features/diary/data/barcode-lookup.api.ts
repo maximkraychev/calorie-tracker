@@ -41,10 +41,15 @@ export class BarcodeLookupApi {
     const url = `${environment.off.productUrl}/api/v2/product/${encodeURIComponent(code)}.json`;
     const params = {
       lc: lang,
-      fields: 'code,product_name,brands,nova_group,nutriments,nutriments_estimated',
+      fields:
+        'code,product_name,brands,nova_group,nutriments,nutriments_estimated,image_front_small_url,image_small_url',
     };
     return this.http
       .get<ProductResponse>(url, { params, headers: this.headers })
-      .pipe(map((response) => (response.status === 1 && response.product ? toResult(response.product) : null)));
+      .pipe(
+        map((response) =>
+          response.status === 1 && response.product ? toResult(response.product) : null,
+        ),
+      );
   }
 }

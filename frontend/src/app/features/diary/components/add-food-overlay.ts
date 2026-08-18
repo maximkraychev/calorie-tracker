@@ -118,8 +118,23 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
 
       @if (selected(); as sel) {
         <div class="body">
-          <div class="sel-name">{{ sel.name }}</div>
-          <div class="text-muted sel-meta">{{ resultMeta(sel) }}</div>
+          <div class="sel-head">
+            <!-- Open Food Facts products carry a front-of-pack photo; our own catalogs
+                 don't, so the row simply collapses to text when there is none. -->
+            @if (sel.imageUrl && !imageFailed()) {
+              <img
+                class="sel-image"
+                [src]="sel.imageUrl"
+                alt=""
+                decoding="async"
+                (error)="imageFailed.set(true)"
+              />
+            }
+            <div class="sel-text">
+              <div class="sel-name">{{ sel.name }}</div>
+              <div class="text-muted sel-meta">{{ resultMeta(sel) }}</div>
+            </div>
+          </div>
 
           @if (purpose() === 'log') {
             <label class="field-label">{{ i18n.t('addFood.meal') }}</label>
@@ -444,7 +459,9 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
     }
     /* The label may wrap to a second line in a narrow column (Bulgarian "Моите храни");
        the icon must not shrink when it does. */
-    .chip ct-icon { flex: none; }
+    .chip ct-icon {
+      flex: none;
+    }
     .chip.active {
       background: var(--color-accent);
       color: var(--color-bg);
@@ -546,6 +563,27 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
       opacity: 0.4;
     }
 
+    .sel-head {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-6);
+    }
+    /* Product shots come on every conceivable background and aspect ratio, so the tile
+       brings its own surface, and object-fit: contain shows tall packaging uncropped. */
+    .sel-image {
+      flex: none;
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      background: var(--color-surface);
+      border: 1px solid var(--color-divider);
+      border-radius: var(--radius-md);
+    }
+    /* Lets long product names wrap instead of stretching the flex row. */
+    .sel-text {
+      min-width: 0;
+    }
     .sel-name {
       font-family: var(--font-heading);
       font-weight: 800;
@@ -553,7 +591,6 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
     }
     .sel-meta {
       font-size: 13px;
-      margin-bottom: var(--space-6);
     }
 
     .field-label {
@@ -699,6 +736,13 @@ export class AddFoodOverlay {
   protected readonly recipesQuery = signal('');
   private readonly retryTick = signal(0);
   protected readonly selected = signal<FoodSearchResult | null>(null);
+  // An OFF image URL can outlive the photo it points at (products are community-edited,
+  // and the record we read may be cached). A broken-image icon is worse than no image, so
+  // a failed load hides the tile — reset on every new pick.
+  protected readonly imageFailed = linkedSignal({
+    source: this.selected,
+    computation: () => false,
+  });
   protected readonly grams = signal(100);
   // Falls back to the first meal only in 'pick' mode, where no meal is supplied and the
   // switcher is hidden — nothing downstream reads it there.
