@@ -120,7 +120,7 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
         <div class="body">
           <div class="sel-head">
             <!-- Open Food Facts products carry a front-of-pack photo; our own catalogs
-                 don't, so the row simply collapses to text when there is none. -->
+                 don't, so the header falls back to plain text when there is none. -->
             @if (sel.imageUrl && !imageFailed()) {
               <img
                 class="sel-image"
@@ -130,7 +130,7 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
                 (error)="imageFailed.set(true)"
               />
             }
-            <div class="sel-text">
+            <div>
               <div class="sel-name">{{ sel.name }}</div>
               <div class="text-muted sel-meta">{{ resultMeta(sel) }}</div>
             </div>
@@ -564,25 +564,27 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
     }
 
     .sel-head {
+      margin-bottom: var(--space-6);
+    }
+    /* With a photo the header stacks and centers — picture on top, name and kcal under
+       it. Without one (our own foods and recipes carry no image) it stays the plain
+       left-aligned title it has always been, so those picks look unchanged. */
+    .sel-head:has(.sel-image) {
       display: flex;
+      flex-direction: column;
       align-items: center;
       gap: var(--space-3);
-      margin-bottom: var(--space-6);
+      text-align: center;
     }
     /* Product shots come on every conceivable background and aspect ratio, so the tile
        brings its own surface, and object-fit: contain shows tall packaging uncropped. */
     .sel-image {
-      flex: none;
-      width: 72px;
-      height: 72px;
+      width: 120px;
+      height: 120px;
       object-fit: contain;
       background: var(--color-surface);
       border: 1px solid var(--color-divider);
-      border-radius: var(--radius-md);
-    }
-    /* Lets long product names wrap instead of stretching the flex row. */
-    .sel-text {
-      min-width: 0;
+      border-radius: var(--radius-lg);
     }
     .sel-name {
       font-family: var(--font-heading);
@@ -666,8 +668,8 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
       opacity: 0.7;
     }
     .preview-macros {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      display: flex;
+      flex-wrap: wrap;
       gap: var(--space-2);
       margin-top: var(--space-3);
       border-top: 1px solid var(--color-divider);

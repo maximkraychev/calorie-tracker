@@ -315,8 +315,8 @@ const NOMINAL_GRAMS = 100;
       font-size: 13px;
     }
     .preview-macros {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      display: flex;
+      flex-wrap: wrap;
       gap: var(--space-2);
       margin-top: var(--space-3);
       border-top: 1px solid var(--color-divider);

@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
-import { map, type Observable } from 'rxjs';
+import { catchError, map, of, throwError, type Observable } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 import type { Language } from '../../../core/i18n/translations';
@@ -18,7 +18,10 @@ import { toResult, type Product } from './off-product';
 // it, so we pass the scanned digits through as-is.
 
 // v2 wraps the product in a status envelope: `status: 1` = found, `status: 0` = not
-// found (unknown barcode). We only read the fields we requested.
+// found (unknown barcode). We only read the fields we requested. Note that v2 sends the
+// `status: 0` envelope under an HTTP **404** for a barcode it has never seen, and under a
+// 200 for one it considers malformed — so both the body and the status code have to be
+// read to tell "no such product" apart from a real failure.
 interface ProductResponse {
   status?: number;
   product?: Product;
@@ -44,12 +47,20 @@ export class BarcodeLookupApi {
       fields:
         'code,product_name,brands,nova_group,nutriments,nutriments_estimated,image_front_small_url,image_small_url',
     };
-    return this.http
-      .get<ProductResponse>(url, { params, headers: this.headers })
-      .pipe(
-        map((response) =>
-          response.status === 1 && response.product ? toResult(response.product) : null,
-        ),
-      );
+    return this.http.get<ProductResponse>(url, { params, headers: this.headers }).pipe(
+      map((response) =>
+        response.status === 1 && response.product ? toResult(response.product) : null,
+      ),
+      // An unknown barcode arrives as a 404, which HttpClient raises as an error even
+      // though it is a perfectly normal answer. Fold it into the same `null` the
+      // 200-with-`status: 0` case produces, so the scanner says "not found · scan
+      // again" instead of reporting a scan failure. Anything else is a genuine fault
+      // and still throws.
+      catchError((error: unknown) =>
+        error instanceof HttpErrorResponse && error.status === 404
+          ? of(null)
+          : throwError(() => error),
+      ),
+    );
   }
 }
