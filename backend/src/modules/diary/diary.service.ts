@@ -2,6 +2,7 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import { db } from '../../db/client.js';
 import { customFoods, logEntries } from '../../db/schema.js';
+import { getGoalForDate, type DailyGoal } from '../goals/goals.service.js';
 import { loadRecipeSnapshots, type RecipeSnapshot } from '../recipes/recipes.service.js';
 import { AppError } from '../../utils/app-error.js';
 import type { CreateEntriesBody, UpdateEntryBody } from './diary.schema.js';
@@ -37,7 +38,10 @@ export interface DiaryEntry {
 
 export interface DiaryDay {
   date: string;
-  goal: null; // goals module not built yet — the UI reads targets from localStorage
+  // The targets in force on `date` — the latest goal row effective on or before it, so
+  // a past day is judged by the goal held then, not today's. Null until the user sets
+  // their first goal; the client falls back to its defaults.
+  goal: DailyGoal | null;
   totals: Per100g;
   entries: DiaryEntry[];
 }
@@ -99,14 +103,19 @@ function sumTotals(entries: DiaryEntry[]): Per100g {
 
 // GET /api/diary?date= — the whole day for the diary screen.
 export async function getDiary(userId: string, date: string): Promise<DiaryDay> {
-  const rows = await db
-    .select()
-    .from(logEntries)
-    .where(and(eq(logEntries.userId, userId), eq(logEntries.entryDate, date)))
-    .orderBy(asc(logEntries.createdAt));
+  // Independent queries — the goal doesn't depend on the entries, so pay for one round
+  // trip rather than two.
+  const [rows, goal] = await Promise.all([
+    db
+      .select()
+      .from(logEntries)
+      .where(and(eq(logEntries.userId, userId), eq(logEntries.entryDate, date)))
+      .orderBy(asc(logEntries.createdAt)),
+    getGoalForDate(userId, date),
+  ]);
 
   const entries = rows.map(toDiaryEntry);
-  return { date, goal: null, totals: sumTotals(entries), entries };
+  return { date, goal, totals: sumTotals(entries), entries };
 }
 
 // POST /api/diary/entries — insert one row per item, all under the same date + meal.

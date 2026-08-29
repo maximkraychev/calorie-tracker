@@ -2,6 +2,7 @@ import { computed, effect, inject, Service, signal } from '@angular/core';
 
 import { isoDateForOffset } from '../../../shared/utils/date.utils';
 import { sumMacros } from '../../../shared/utils/nutrition.utils';
+import type { Goals } from '../../../core/goals/goals.models';
 import { DiaryApi } from './diary.api';
 import { MEAL_ORDER, type LogEntry, type MealSection, type MealType } from '../models/diary.models';
 
@@ -17,6 +18,7 @@ export class DiaryStore {
 
   private readonly _dayOffset = signal(0);
   private readonly _entriesByDate = signal<Record<string, LogEntry[]>>({});
+  private readonly _goalByDate = signal<Record<string, Goals | null>>({});
   private readonly _statusByDate = signal<Record<string, DayStatus>>({});
   private readonly _mealDetail = signal<MealType | null>(null);
   private readonly _entryEditId = signal<string | null>(null);
@@ -33,6 +35,13 @@ export class DiaryStore {
 
   readonly entries = computed(() => this._entriesByDate()[this.currentDate()] ?? []);
   readonly totals = computed(() => sumMacros(this.entries()));
+
+  /**
+   * The targets the server says applied on the viewed day — goals are effective-dated, so
+   * this is the goal held *then*, not today's. Null while the day is still loading, or if
+   * the user had no goal yet; the page falls back to the current one.
+   */
+  readonly dayGoal = computed<Goals | null>(() => this._goalByDate()[this.currentDate()] ?? null);
 
   /** Load state of the day currently shown — drives the page's spinner / retry. */
   readonly status = computed<DayStatus>(() => this._statusByDate()[this.currentDate()] ?? 'loading');
@@ -187,8 +196,9 @@ export class DiaryStore {
     this.requested.add(date);
     this.setStatus(date, 'loading');
     this.api.getDiary(date).subscribe({
-      next: (entries) => {
+      next: ({ entries, goal }) => {
         this._entriesByDate.update((byDate) => ({ ...byDate, [date]: entries }));
+        this._goalByDate.update((byDate) => ({ ...byDate, [date]: goal }));
         this.setStatus(date, 'ready');
       },
       error: () => this.setStatus(date, 'error'),

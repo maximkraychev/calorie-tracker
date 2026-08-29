@@ -1,6 +1,7 @@
 import { Component, computed, inject, output, signal } from '@angular/core';
 
-import { GoalsStore, type Goals } from '../goals/goals.store';
+import { GoalsStore } from '../goals/goals.store';
+import { type Goals } from '../goals/goals.models';
 import { I18n } from '../i18n/i18n';
 import { type TranslationKey } from '../i18n/translations';
 import { Icon } from '../../shared/ui/icon';

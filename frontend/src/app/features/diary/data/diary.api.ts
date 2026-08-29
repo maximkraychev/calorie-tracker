@@ -3,6 +3,7 @@ import { inject, Service } from '@angular/core';
 import { map, type Observable } from 'rxjs';
 
 import { API_BASE_URL } from '../../../core/api/api.config';
+import { toGoals, type DailyGoalDto, type Goals } from '../../../core/goals/goals.models';
 import type { FoodSource, LogEntry, MealType } from '../models/diary.models';
 
 // Thin HttpClient wrapper over /api/diary. The auth interceptor adds the Bearer token
@@ -40,9 +41,18 @@ interface DiaryEntryDto {
 
 interface DiaryDayDto {
   date: string;
-  goal: null;
+  goal: DailyGoalDto | null;
   totals: Per100gDto;
   entries: DiaryEntryDto[];
+}
+
+// A day as the store keeps it. The goal travels with the entries because it is
+// effective-dated server-side: the targets returned here are the ones that applied on
+// *this* day, so a past day stays judged by the goal held then. Null until the user set
+// their first goal.
+export interface DiaryDay {
+  entries: LogEntry[];
+  goal: Goals | null;
 }
 
 // Three shapes, mirroring the backend's discriminated union. A custom food or a recipe
@@ -67,11 +77,14 @@ export class DiaryApi {
   private readonly http = inject(HttpClient);
   private readonly base = `${inject(API_BASE_URL)}/diary`;
 
-  /** All entries logged on `date`, in log order. */
-  getDiary(date: string): Observable<LogEntry[]> {
-    return this.http
-      .get<DiaryDayDto>(this.base, { params: { date } })
-      .pipe(map((day) => day.entries.map(toLogEntry)));
+  /** The day's entries (in log order) plus the goal that applied on it. */
+  getDiary(date: string): Observable<DiaryDay> {
+    return this.http.get<DiaryDayDto>(this.base, { params: { date } }).pipe(
+      map((day) => ({
+        entries: day.entries.map(toLogEntry),
+        goal: day.goal ? toGoals(day.goal) : null,
+      })),
+    );
   }
 
   /** Log one or more items under a single date + meal. Returns the created entries. */

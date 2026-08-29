@@ -1,7 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 
 import { I18n } from '../../../core/i18n/i18n';
-import type { Goals } from '../../../core/goals/goals.store';
+import type { Goals } from '../../../core/goals/goals.models';
 import { round, type Macros } from '../../../shared/utils/nutrition.utils';
 
 // SVG ring geometry from the design spec: 210×210 viewBox, radius 93, stroke 14.

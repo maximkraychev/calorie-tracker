@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 
 import { I18n } from '../../../core/i18n/i18n';
 import { GoalsStore } from '../../../core/goals/goals.store';
+import type { Goals } from '../../../core/goals/goals.models';
 import { AccountSheet } from '../../../core/layout/account-sheet.store';
 import { startOfDay } from '../../../shared/utils/date.utils';
 import { Icon } from '../../../shared/ui/icon';
@@ -69,7 +70,7 @@ import { MEAL_LABEL_KEYS, type LogEntry, type MealType } from '../models/diary.m
         <div class="loading text-muted" role="status">{{ i18n.t('diary.loading') }}</div>
       }
 
-      <ct-daily-totals [totals]="store.totals()" [goals]="goalsStore.goals()" />
+      <ct-daily-totals [totals]="store.totals()" [goals]="goals()" />
 
       <div class="meals-head">
         <h4>{{ i18n.t('diary.meals') }}</h4>
@@ -163,6 +164,21 @@ export class DiaryPage {
   protected readonly store = inject(DiaryStore);
   protected readonly goalsStore = inject(GoalsStore);
   protected readonly accountSheet = inject(AccountSheet);
+
+  /**
+   * The targets this day is judged against. Goals are effective-dated, so a past day uses
+   * the goal the server says applied then (`store.dayGoal()`), while today and any day
+   * after the current goal took effect use the live one — that way a goal saved in the
+   * sheet shows up on the ring immediately, with no refetch of the loaded days.
+   *
+   * A day earlier than the user's first goal has none of its own; showing the current
+   * targets there beats showing the built-in defaults.
+   */
+  protected readonly goals = computed<Goals>(() =>
+    this.store.currentDate() >= this.goalsStore.effectiveFrom()
+      ? this.goalsStore.goals()
+      : (this.store.dayGoal() ?? this.goalsStore.goals()),
+  );
 
   protected readonly dateLabel = computed(() => {
     const offset = this.store.dayOffset();
