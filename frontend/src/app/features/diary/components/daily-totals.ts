@@ -87,9 +87,11 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
        (r 93, stroke 14) and the dash maths below are untouched. */
     .ring svg { display: block; width: 100%; height: 100%; }
 
-    /* The dial's text scales with it — each fraction below is the spec's 210px value
-       divided by 210, so the whole thing shrinks as one unit. The two small labels get a
-       px floor; proportional alone would drop them under 8px on a short screen. */
+    /* The dial's text scales with it — the fractions below sit just under the spec's
+       210px ratios (52/11/12 divided by 210) to keep the lines clear of the arc: the two
+       small labels need a px floor to stay legible, and a floor makes them proportionally
+       *larger* on a short screen, which is what crowds the ring. The padding is only a
+       wrap guard — the circle itself is what the gap is measured against. */
     .ring-center {
       position: absolute;
       inset: 0;
@@ -98,24 +100,24 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 0 calc(var(--ring-size) * 0.1);
+      padding: 0 calc(var(--ring-size) * 0.09);
     }
     .ring-kcal {
       font-family: var(--font-heading);
       font-weight: 800;
-      font-size: calc(var(--ring-size) * 0.248);
+      font-size: calc(var(--ring-size) * 0.235);
       line-height: 0.85;
       letter-spacing: -0.02em;
     }
     .ring-label {
-      font-size: max(9.5px, calc(var(--ring-size) * 0.052));
+      font-size: max(8.5px, calc(var(--ring-size) * 0.05));
       letter-spacing: 0.12em;
       text-transform: uppercase;
       opacity: 0.7;
       margin-top: calc(var(--ring-size) * 0.038);
     }
     .ring-budget {
-      font-size: max(10px, calc(var(--ring-size) * 0.057));
+      font-size: max(9.5px, calc(var(--ring-size) * 0.055));
       opacity: 0.5;
       margin-top: calc(var(--ring-size) * 0.014);
     }
