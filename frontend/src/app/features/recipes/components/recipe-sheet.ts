@@ -450,8 +450,10 @@ interface RecipeDraft {
       font-size: 13px;
     }
     .preview-macros {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      /* The pills are nowrap and the macro labels are long in Bulgarian, so fixed columns
+         overflow the card on a narrow phone — let them wrap onto a second row instead. */
+      display: flex;
+      flex-wrap: wrap;
       gap: var(--space-2);
       margin-top: var(--space-3);
       border-top: 1px solid var(--color-divider);
