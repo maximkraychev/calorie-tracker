@@ -131,7 +131,7 @@ const PICK_HIDDEN_MODES: readonly string[] = ['recipes', 'photo'];
               />
             }
             <div>
-              <div class="sel-name">{{ sel.name }}</div>
+              <div class="sel-name">{{ resultName(sel) }}</div>
               <div class="text-muted sel-meta">{{ resultMeta(sel) }}</div>
             </div>
           </div>
@@ -948,7 +948,7 @@ export class AddFoodOverlay {
 
     if (this.purpose() === 'pick') {
       this.pickIngredient.emit({
-        name: sel.name,
+        name: this.resultName(sel),
         brand: sel.brand,
         // 'recipe' is unreachable here: the recipes chip is hidden in pick mode, because
         // recipes do not nest.
@@ -966,7 +966,7 @@ export class AddFoodOverlay {
 
     this.log.emit({
       mealType: this.targetMeal(),
-      name: sel.name,
+      name: this.resultName(sel),
       brand: sel.brand,
       source,
       // The OFF barcode / USDA id — provenance for search picks and scans. A custom food
