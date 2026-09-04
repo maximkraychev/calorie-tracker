@@ -214,12 +214,20 @@ type ReviewItem = EstimateItem & { picked?: FoodSearchResult };
                     </span>
                     {{ i18n.t('photo.unresolvedHint') }}
                   } @else {
-                    <!-- Badge only: repeating the same sentence on every resolved row is
-                         noise, so the explanation lives on the tooltip. -->
-                    <span class="badge badge-db" [title]="i18n.t('photo.sourceDbHint')">
+                    <!-- Tap target, not a hover tooltip: hover never fires on a touch
+                         screen, so the explanation is revealed by tapping the badge. -->
+                    <button
+                      type="button"
+                      class="badge badge-db badge-tap"
+                      [attr.aria-expanded]="openHintId() === item.id"
+                      (click)="toggleHint(item.id)"
+                    >
                       <ct-icon name="check" [size]="12" />
                       {{ i18n.t(sourceKey(item)) }}
-                    </span>
+                    </button>
+                    @if (openHintId() === item.id) {
+                      <span class="source-hint">{{ i18n.t('photo.sourceDbHint') }}</span>
+                    }
                   }
                 </p>
 
@@ -528,6 +536,16 @@ type ReviewItem = EstimateItem & { picked?: FoodSearchResult };
       border-color: var(--color-text-muted);
       border-style: dashed;
     }
+    /* The db badge is a real <button> so tapping it works on touch screens, where
+       there is no hover to show a title tooltip — reset it back to badge looks. */
+    .badge-tap {
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+    .source-hint {
+      flex-basis: 100%;
+    }
 
     .stepper {
       display: flex;
@@ -747,6 +765,10 @@ export class PhotoEstimateOverlay {
   protected readonly hiddenFatsNote = signal<string | null>(null);
   protected readonly clarifyingQuestion = signal<string | null>(null);
 
+  // Hover tooltips don't fire on mobile, so the source badge's explanation is
+  // revealed by tapping instead — one row open at a time, closed by tapping again.
+  protected readonly openHintId = signal<string | null>(null);
+
   protected readonly addQuery = signal('');
   private readonly retryTick = signal(0);
 
@@ -905,6 +927,11 @@ export class PhotoEstimateOverlay {
   protected sourceKey(item: ReviewItem): TranslationKey {
     if (item.picked) return item.picked.source === 'generic' ? 'photo.sourceDb' : 'photo.sourceOff';
     return item.unresolved ? 'photo.sourceAi' : 'photo.sourceDb';
+  }
+
+  /** Toggles a row's source hint open — tapping the same badge again closes it. */
+  protected toggleHint(id: string): void {
+    this.openHintId.update((current) => (current === id ? null : id));
   }
 
   /** A hit's name in the active language — generic foods carry a Bulgarian one. */
